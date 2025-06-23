@@ -44,7 +44,7 @@ export default function DeleteCourseRoute() {
       <Card className="mt-32">
         <CardHeader>
           <CardTitle>Are you sure you want to delete this course?</CardTitle>
-          <CardDescription>This action caccont be undone.</CardDescription>
+          <CardDescription>This action cannot be undone.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
           <Link
