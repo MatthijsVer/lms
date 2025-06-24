@@ -1,3 +1,5 @@
+Update: 24.06.2025 - Part two is almost finished 6 hours have alredy been edited. this will be a 20+ hours video.
+
 Hey everyone 👋
 
 This is the repo for the Marshal-LMS video.
