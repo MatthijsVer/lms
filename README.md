@@ -1,3 +1,5 @@
+Update: 29.06.2025 - Hey everyone! Part two was published two days ago and has a total length of 12 hours. I want to thank you all for supporting me and the channel. If you have any questions, just ping me on Discord or send me an email. Thanks, and enjoy your day! 🫶🏻
+
 Update: 24.06.2025 - Part two is almost finished 6 hours have alredy been edited. this will be a 20+ hours video.
 
 Hey everyone 👋
