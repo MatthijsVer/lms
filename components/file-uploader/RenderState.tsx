@@ -27,7 +27,7 @@ export function RenderEmptyState({ isDragActive }: { isDragActive: boolean }) {
   );
 }
 
-export function RenderErrorState() {
+export function RenderErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className=" text-center">
       <div className="flex items-center mx-auto justify-center size-12 rounded-full bg-destructive/30 mb-4">
@@ -36,7 +36,7 @@ export function RenderErrorState() {
 
       <p className="text-base font-semibold">Upload Failed</p>
       <p className="text-xs mt-1 text-muted-foreground">Something went wrong</p>
-      <Button className="mt-4" type="button">
+      <Button className="mt-4" type="button" onClick={onRetry}>
         Retry File Selection
       </Button>
     </div>
@@ -63,7 +63,7 @@ export function RenderUploadedState({
           src={previewUrl}
           alt="Uploaded File"
           fill
-          className="object-contain p-2"
+          className="object-cover rounded-2xl p-1"
         />
       )}
       <Button

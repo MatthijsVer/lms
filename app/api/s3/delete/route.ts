@@ -1,10 +1,12 @@
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 
-import { env } from "@/lib/env";
+// import { env } from "@/lib/env";
 import { S3 } from "@/lib/S3Client";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
+import { LocalFileStorage } from "@/lib/local-storage";
+import { LocalFileStorageServer } from "@/lib/local-storage-server";
 
 const aj = arcjet.withRule(
   fixedWindow({
@@ -35,15 +37,25 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Handle local development
+    if (LocalFileStorage.isLocalDevelopment()) {
+      await LocalFileStorageServer.deleteFile(key);
+      return NextResponse.json(
+        { message: "File deleted successfully" },
+        { status: 200 }
+      );
+    }
+
+    // Handle production S3 delete
     const command = new DeleteObjectCommand({
-      Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
+      Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
       Key: key,
     });
 
     await S3.send(command);
 
     return NextResponse.json(
-      { message: "File deleted succesfully" },
+      { message: "File deleted successfully" },
       { status: 200 }
     );
   } catch {

@@ -3,7 +3,7 @@
 import { requireUser } from "@/app/data/user/require-user";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
+// import { env } from "@/lib/env";
 import { stripe } from "@/lib/stripe";
 import { ApiResponse } from "@/lib/types";
 import { request } from "@arcjet/next";
@@ -143,8 +143,8 @@ export async function enrollInCourseAction(
           },
         ],
         mode: "payment",
-        success_url: `${env.BETTER_AUTH_URL}/payment/success`,
-        cancel_url: `${env.BETTER_AUTH_URL}/payment/cancel`,
+        success_url: `${process.env.BETTER_AUTH_URL}/payment/success`,
+        cancel_url: `${process.env.BETTER_AUTH_URL}/payment/cancel`,
         metadata: {
           userId: user.id,
           courseId: course.id,

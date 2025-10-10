@@ -239,6 +239,24 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
     }
   }
 
+  function handleRetry() {
+    if (fileState.objectUrl && !fileState.objectUrl.startsWith("http")) {
+      URL.revokeObjectURL(fileState.objectUrl);
+    }
+
+    setFileState({
+      file: null,
+      uploading: false,
+      progress: 0,
+      objectUrl: undefined,
+      error: false,
+      fileType: fileTypeAccepted,
+      id: null,
+      isDeleting: false,
+      key: undefined,
+    });
+  }
+
   function renderContent() {
     if (fileState.uploading) {
       return (
@@ -250,7 +268,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
     }
 
     if (fileState.error) {
-      return <RenderErrorState />;
+      return <RenderErrorState onRetry={handleRetry} />;
     }
 
     if (fileState.objectUrl) {
@@ -284,19 +302,20 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
     maxSize:
       fileTypeAccepted === "image" ? 5 * 1024 * 1024 : 5000 * 1024 * 1024,
     onDropRejected: rejectedFiles,
-    disabled: fileState.uploading || !!fileState.objectUrl,
+    disabled:
+      fileState.uploading || (!!fileState.objectUrl && !fileState.error),
   });
   return (
     <Card
       {...getRootProps()}
       className={cn(
-        "relative border-2 border-dashed transition-colors duration-200 ease-in-out w-full h-64",
+        "relative border rounded-2xl border-dashed py-0 transition-colors duration-200 ease-in-out w-full h-64",
         isDragActive
           ? "border-primary bg-primary/10 border-solid"
           : "border-border hover:border-primary"
       )}
     >
-      <CardContent className="flex items-center justify-center h-full w-full p-4">
+      <CardContent className="flex items-center justify-center rounded-lg h-full w-full p-0">
         <input {...getInputProps()} />
         {renderContent()}
       </CardContent>

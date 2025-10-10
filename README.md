@@ -7,7 +7,7 @@ Update: 24.06.2025 - Part two is almost finished 6 hours have alredy been edited
 
 Hey everyone 👋
 
-This is the repo for the Marshal-LMS video.
+This is the repo for the LMS video.
 The full version of the code will be released this Tuesday when Part Two goes live.
 If you need early access for any reason (e.g. XYZ), feel free to email me: jan@marshalcode.com
 

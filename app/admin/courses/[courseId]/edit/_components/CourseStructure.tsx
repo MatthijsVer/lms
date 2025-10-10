@@ -303,7 +303,7 @@ export function CourseStructure({ data }: iAppProps) {
                 key={item.id}
               >
                 {(listeners) => (
-                  <Card>
+                  <Card className="py-0">
                     <Collapsible
                       open={item.isOpen}
                       onOpenChange={() => toggleChapter(item.id)}

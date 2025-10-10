@@ -8,7 +8,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import { env } from "@/lib/env";
+import { LocalFileStorage } from "@/lib/local-storage";
 import {
   IconBook,
   IconCategory,
@@ -31,17 +31,15 @@ export default async function SlugPage({ params }: { params: Params }) {
   const course = await getIndividualCourse(slug);
   const isEnrolled = await checkIfCourseBought(course.id);
 
+  const imageUrl = LocalFileStorage.isLocalDevelopment()
+    ? LocalFileStorage.getPublicUrl(course.fileKey)
+    : `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES}.fly.storage.tigris.dev/${course.fileKey}`;
+
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-5">
+    <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 mt-5">
       <div className="order-1 lg:col-span-2">
         <div className="relative aspect-video w-full overflow-hidden rounded-xl shadow-lg">
-          <Image
-            src={`https://${env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES}.fly.storage.tigris.dev/${course.fileKey}`}
-            alt=""
-            fill
-            className="object-cover"
-            priority
-          />
+          <Image src={imageUrl} alt="" fill className="object-cover" priority />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
         </div>
 
@@ -83,7 +81,7 @@ export default async function SlugPage({ params }: { params: Params }) {
 
         <div className="mt-12 space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-semibold tracking-tight">
+            <h2 className="text-xl font-semibold tracking-tight">
               Course Content
             </h2>
             <div>
@@ -99,7 +97,7 @@ export default async function SlugPage({ params }: { params: Params }) {
           <div className="space-y-4">
             {course.chapter.map((chapter, index) => (
               <Collapsible key={chapter.id} defaultOpen={index === 0}>
-                <Card className="p-0 overflow-hidden border-2 transition-all duration-200 hover:shadow-md gap-0">
+                <Card className="p-0 overflow-hidden border transition-all duration-200 hover:shadow-md gap-0">
                   <CollapsibleTrigger>
                     <div>
                       <CardContent className="p-6 hover:bg-muted/50 transition-colors">
@@ -139,7 +137,7 @@ export default async function SlugPage({ params }: { params: Params }) {
                             key={lesson.id}
                             className="flex items-center gap-4 rounded-lg p-3 hover:bg-accent transition-colors"
                           >
-                            <div className="flex size-8 items-center justify-center rounded-full bg-background border-2 border-primary/20">
+                            <div className="flex size-8 items-center justify-center rounded-full bg-background border border-primary/20">
                               <IconPlayerPlay className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
                             </div>
 

@@ -1,4 +1,4 @@
-import { env } from "@/lib/env";
+// import { env } from "@/lib/env";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -7,6 +7,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { S3 } from "@/lib/S3Client";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import { requireAdmin } from "@/app/data/admin/require-admin";
+import { LocalFileStorage } from "@/lib/local-storage";
+import { LocalFileStorageServer } from "@/lib/local-storage-server";
 
 const fileUploadSchema = z.object({
   fileName: z.string().min(1, { message: "Filename is required" }),
@@ -34,6 +36,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "dudde not good" }, { status: 429 });
     }
 
+    // Handle local development - return a mock presigned URL
+    if (LocalFileStorage.isLocalDevelopment()) {
+      const body = await request.json();
+
+      const validation = fileUploadSchema.safeParse(body);
+
+      if (!validation.success) {
+        return NextResponse.json(
+          { error: "Invalid Request Body" },
+          { status: 400 }
+        );
+      }
+
+      const { fileName } = validation.data;
+      const uniqueKey = `${uuidv4()}-${fileName}`;
+
+      // Return a special URL that indicates this is for local development
+      return NextResponse.json({
+        presignedUrl: `/api/s3/upload/local?key=${uniqueKey}`,
+        key: uniqueKey,
+      });
+    }
+
+    // Handle production S3 upload
     const body = await request.json();
 
     const validation = fileUploadSchema.safeParse(body);
@@ -50,7 +76,7 @@ export async function POST(request: Request) {
     const uniqueKey = `${uuidv4()}-${fileName}`;
 
     const command = new PutObjectCommand({
-      Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
+      Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
       ContentType: contentType,
       ContentLength: size,
       Key: uniqueKey,

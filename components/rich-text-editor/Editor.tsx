@@ -32,7 +32,7 @@ export function RichTextEditor({ field }: { field: any }) {
   });
 
   return (
-    <div className="w-full border border-input rounded-lg overflow-hidden dark:bg-input/30">
+    <div className="w-full border border-border rounded-xl overflow-hidden dark:bg-input/30">
       <Menubar editor={editor} />
       <EditorContent editor={editor} />
     </div>
