@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { lessonSchema, LessonSchemaType } from "@/lib/zodSchemas";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,10 +25,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/rich-text-editor/Editor";
 import { Uploader } from "@/components/file-uploader/Uploader";
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { tryCatch } from "@/hooks/try-catch";
 import { updateLesson } from "../actions";
 import { toast } from "sonner";
+import { ContentBlockEditor } from "@/components/content-blocks/ContentBlockEditor";
+import {
+  ContentBlock,
+  ContentBlockType,
+  VideoContent,
+} from "@/lib/content-blocks";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AILessonGeneratorDialog } from "@/components/ai/AiLessonChat";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 interface iAppProps {
   data: AdminLessonType;
@@ -38,6 +48,31 @@ interface iAppProps {
 
 export function LessonForm({ chapterId, data, courseId }: iAppProps) {
   const [pending, startTransition] = useTransition();
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
+  const [useLegacyMode, setUseLegacyMode] = useState(true);
+
+  // Initialize content blocks from database
+  useEffect(() => {
+    if (data.contentBlocks && data.contentBlocks.length > 0) {
+      // Load existing content blocks
+      const blocks = data.contentBlocks.map((block) => ({
+        id: block.id,
+        type: block.type as ContentBlockType,
+        position: block.position,
+        content: block.content as any,
+      }));
+      setContentBlocks(blocks);
+    } else if (data.videoKey && contentBlocks.length === 0) {
+      // Migrate from legacy video field
+      const videoBlock: ContentBlock = {
+        type: ContentBlockType.VIDEO,
+        position: 0,
+        content: { videoKey: data.videoKey, title: "" } as VideoContent,
+      };
+      setContentBlocks([videoBlock]);
+    }
+  }, []);
+
   const form = useForm<LessonSchemaType>({
     resolver: zodResolver(lessonSchema),
     defaultValues: {
@@ -50,11 +85,24 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
     },
   });
 
+  // Handle AI-generated content
+  const handleAIContentGenerated = (newBlocks: ContentBlock[]) => {
+    // Add new blocks to existing ones
+    setContentBlocks((prevBlocks) => [...prevBlocks, ...newBlocks]);
+    toast.success(`Added ${newBlocks.length} AI-generated content blocks`);
+  };
+
   // 2. Define a submit handler.
   function onSubmit(values: LessonSchemaType) {
     startTransition(async () => {
+      // Include content blocks in the submission if in blocks mode
+      const submitData = {
+        ...values,
+        contentBlocks: contentBlocks.length > 0 ? contentBlocks : undefined,
+      };
+
       const { data: result, error } = await tryCatch(
-        updateLesson(values, data.id)
+        updateLesson(submitData, data.id)
       );
 
       if (error) {
@@ -69,6 +117,7 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
       }
     });
   }
+
   return (
     <div>
       <Link
@@ -76,7 +125,6 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
         href={`/admin/courses/${courseId}/edit`}
       >
         <ArrowLeft className="size-4" />
-
         <span>Go Back</span>
       </Link>
 
@@ -84,7 +132,7 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
         <CardHeader>
           <CardTitle>Lesson Configuration</CardTitle>
           <CardDescription>
-            Configure the video and description for this lesson.
+            Configure the content for this lesson.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,26 +145,13 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
                   <FormItem>
                     <FormLabel>Lesson Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Chapter xyz" {...field} />
+                      <Input placeholder="Enter lesson name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <RichTextEditor field={field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="thumbnailKey"
@@ -134,27 +169,120 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="videoKey"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Video File</FormLabel>
-                    <FormControl>
-                      <Uploader
-                        onChange={field.onChange}
-                        value={field.value}
-                        fileTypeAccepted="video"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
-              <Button disabled={pending} type="submit">
-                {pending ? "Saving.." : "Save Lesson"}
-              </Button>
+              <Tabs defaultValue="blocks" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="legacy">Simple Mode</TabsTrigger>
+                  <TabsTrigger value="blocks">
+                    Content Blocks (Recommended)
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="legacy" className="space-y-6 mt-6">
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Simple mode is for basic lessons with text and video only.
+                      For interactive content like quizzes, use Content Blocks
+                      mode.
+                    </AlertDescription>
+                  </Alert>
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <RichTextEditor field={field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="videoKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Video File</FormLabel>
+                        <FormControl>
+                          <Uploader
+                            onChange={field.onChange}
+                            value={field.value}
+                            fileTypeAccepted="video"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="blocks" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          Build with Content Blocks
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Create rich, interactive lessons with various content
+                          types.
+                        </p>
+                      </div>
+
+                      {/* AI Generator Button */}
+                      <AILessonGeneratorDialog
+                        onContentGenerated={handleAIContentGenerated}
+                        existingBlocks={contentBlocks}
+                        lessonTitle={form.getValues("name")}
+                        trigger={
+                          <Button variant="outline" size="sm" type="button">
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate with AI
+                          </Button>
+                        }
+                      />
+                    </div>
+
+                    {contentBlocks.length === 0 && (
+                      <Alert className="border-dashed">
+                        <Wand2 className="h-4 w-4" />
+                        <AlertDescription className="space-y-2">
+                          <p>No content blocks yet. Get started by:</p>
+                          <ul className="list-disc list-inside text-sm ml-2">
+                            <li>
+                              Adding blocks manually using the buttons below
+                            </li>
+                            <li>Or use AI to generate content automatically</li>
+                          </ul>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <ContentBlockEditor
+                      blocks={contentBlocks}
+                      onChange={setContentBlocks}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex items-center gap-2">
+                <Button disabled={pending} type="submit">
+                  {pending ? "Saving..." : "Save Lesson"}
+                </Button>
+
+                {contentBlocks.length > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {contentBlocks.length} content block
+                    {contentBlocks.length !== 1 ? "s" : ""} configured
+                  </span>
+                )}
+              </div>
             </form>
           </Form>
         </CardContent>

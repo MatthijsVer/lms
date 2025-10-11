@@ -80,6 +80,13 @@ export const lessonSchema = z.object({
 
   videoKey: z.string().optional(),
   thumbnailKey: z.string().optional(),
+  
+  // For content blocks
+  contentBlocks: z.array(z.object({
+    type: z.string(),
+    position: z.number(),
+    content: z.any(), // JSON content
+  })).optional(),
 });
 
 export type CourseSchemaType = z.infer<typeof courseSchema>;

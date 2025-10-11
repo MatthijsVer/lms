@@ -10,6 +10,8 @@ import { useTransition } from "react";
 import { markLessonComplete } from "../actions";
 import { toast } from "sonner";
 import { useConfetti } from "@/hooks/use-confetti";
+import { ContentBlockRenderer } from "@/components/content-blocks/ContentBlockRenderer";
+import { LessonPointsDisplay } from "@/components/lesson/LessonPointsDisplay";
 
 interface iAppProps {
   data: LessonContentType;
@@ -76,13 +78,43 @@ export function CourseContent({ data }: iAppProps) {
     });
   }
   return (
-    <div className="flex flex-col h-full bg-background pl-6">
-      <VideoPlayer
-        thumbnailKey={data.thumbnailKey ?? ""}
-        videoKey={data.videoKey ?? ""}
-      />
+    <div className="flex flex-col h-full bg-background pl-6 pt-6">
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            {data.title}
+          </h1>
 
-      <div className="py-4 border-b">
+          {data.description && (
+            <RenderDescription json={JSON.parse(data.description)} />
+          )}
+        </div>
+
+        {/* Show lesson points summary if content blocks have points */}
+        {data.contentBlocks && data.contentBlocks.length > 0 && (
+          <LessonPointsDisplay
+            contentBlocks={data.contentBlocks}
+            userProgress={data.userProgress}
+            className="mb-4 py-0"
+          />
+        )}
+
+        {/* Render content blocks if they exist */}
+        {data.contentBlocks && data.contentBlocks.length > 0 ? (
+          <ContentBlockRenderer
+            blocks={data.contentBlocks}
+            lessonId={data.id}
+          />
+        ) : (
+          /* Fallback to legacy video/description layout */
+          <VideoPlayer
+            thumbnailKey={data.thumbnailKey ?? ""}
+            videoKey={data.videoKey ?? ""}
+          />
+        )}
+      </div>
+
+      <div className="py-4 border-b mt-6">
         {data.lessonProgress.length > 0 ? (
           <Button
             variant="outline"
@@ -96,16 +128,6 @@ export function CourseContent({ data }: iAppProps) {
             <CheckCircle className="size-4 mr-2 text-green-500" />
             Mark as Complete
           </Button>
-        )}
-      </div>
-
-      <div className="space-y-3 pt-3">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {data.title}
-        </h1>
-
-        {data.description && (
-          <RenderDescription json={JSON.parse(data.description)} />
         )}
       </div>
     </div>

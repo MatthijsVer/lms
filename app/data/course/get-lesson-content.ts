@@ -2,6 +2,7 @@ import "server-only";
 import { requireUser } from "../user/require-user";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { getUserLessonPoints } from "@/lib/user-lesson-progress";
 
 export async function getLessonContent(lessonId: string) {
   const session = await requireUser();
@@ -17,6 +18,17 @@ export async function getLessonContent(lessonId: string) {
       thumbnailKey: true,
       videoKey: true,
       position: true,
+      contentBlocks: {
+        orderBy: {
+          position: "asc",
+        },
+        select: {
+          id: true,
+          type: true,
+          position: true,
+          content: true,
+        },
+      },
       lessonProgress: {
         where: {
           userId: session.id,
@@ -58,7 +70,14 @@ export async function getLessonContent(lessonId: string) {
   if (!enrollment || enrollment.status !== "Active") {
     return notFound();
   }
-  return lesson;
+
+  // Get user's earned points for this lesson
+  const userProgress = await getUserLessonPoints(lessonId, session.id);
+
+  return {
+    ...lesson,
+    userProgress,
+  };
 }
 
 export type LessonContentType = Awaited<ReturnType<typeof getLessonContent>>;

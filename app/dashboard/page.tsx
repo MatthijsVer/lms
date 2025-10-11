@@ -12,9 +12,9 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Enrolled Courses</h1>
+    <div className="pt-4">
+      <div className="flex flex-col gap-0.5 mb-6">
+        <h1 className="text-xl font-bold">Enrolled Courses</h1>
         <p className="text-muted-foreground">
           Here you can see all the courses you have access to
         </p>
@@ -28,7 +28,7 @@ export default async function DashboardPage() {
           href="/courses"
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {enrolledCourses.map((course) => (
             <CourseProgressCard key={course.Course.id} data={course} />
           ))}
@@ -70,6 +70,6 @@ export default async function DashboardPage() {
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 }

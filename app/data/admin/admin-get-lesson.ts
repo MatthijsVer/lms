@@ -17,6 +17,11 @@ export async function adminGetLesson(id: string) {
       description: true,
       id: true,
       position: true,
+      contentBlocks: {
+        orderBy: {
+          position: 'asc',
+        },
+      },
     },
   });
 

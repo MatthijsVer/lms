@@ -4,6 +4,7 @@ import { requireAdmin } from "@/app/data/admin/require-admin";
 import { prisma } from "@/lib/db";
 import { ApiResponse } from "@/lib/types";
 import { lessonSchema, LessonSchemaType } from "@/lib/zodSchemas";
+import { ContentBlockType } from "@/lib/content-blocks";
 
 export async function updateLesson(
   values: LessonSchemaType,
@@ -21,6 +22,7 @@ export async function updateLesson(
       };
     }
 
+    // Update lesson basic info
     await prisma.lesson.update({
       where: {
         id: lessonId,
@@ -32,6 +34,24 @@ export async function updateLesson(
         videoKey: result.data.videoKey,
       },
     });
+
+    // Handle content blocks if provided
+    if (result.data.contentBlocks && result.data.contentBlocks.length > 0) {
+      // Delete existing content blocks
+      await prisma.contentBlock.deleteMany({
+        where: { lessonId },
+      });
+
+      // Create new content blocks
+      await prisma.contentBlock.createMany({
+        data: result.data.contentBlocks.map((block) => ({
+          lessonId,
+          type: block.type as ContentBlockType,
+          position: block.position,
+          content: block.content,
+        })),
+      });
+    }
 
     return {
       status: "success",

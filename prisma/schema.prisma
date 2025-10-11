@@ -21,6 +21,8 @@ model User {
   courses        Course[]
   enrollment     Enrollment[]
   lessonProgress LessonProgress[]
+  quizAttempts   QuizAttempt[]
+  contentBlockProgress ContentBlockProgress[]
 
   stripeCustomerId String? @unique
 
@@ -139,7 +141,7 @@ model Lesson {
   title        String
   description  String?
   thumbnailKey String?
-  videoKey     String?
+  videoKey     String?  // Keep for backward compatibility
   position     Int
 
   createdAt DateTime @default(now())
@@ -148,6 +150,34 @@ model Lesson {
   chapterId String
 
   lessonProgress LessonProgress[]
+  contentBlocks  ContentBlock[]
+}
+
+model ContentBlock {
+  id String @id @default(uuid())
+
+  type     ContentBlockType
+  position Int
+  content  Json // Flexible JSON field for different content types
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+}
+
+enum ContentBlockType {
+  VIDEO
+  TEXT
+  IMAGE
+  QUIZ
+  EXERCISE
+  CODE
+  PDF
+  AUDIO
+  DOWNLOAD
+  FILL_IN_BLANK
+  FLASHCARD
 }
 
 model Enrollment {
@@ -186,4 +216,41 @@ model LessonProgress {
   lessonId String
 
   @@unique([userId, lessonId])
+}
+
+model QuizAttempt {
+  id String @id @default(uuid())
+
+  contentBlockId String // Reference to the quiz content block
+  selectedAnswers Json   // Array of selected option IDs
+  isCorrect      Boolean
+  score          Int     // Points earned
+  timeSpent      Int?    // Time spent in seconds
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@index([contentBlockId, userId])
+}
+
+model ContentBlockProgress {
+  id String @id @default(uuid())
+
+  contentBlockId String
+  type           ContentBlockType
+  completed      Boolean          @default(false)
+  
+  // For quizzes: best score, attempts count, etc.
+  metadata Json? // Flexible field for different progress types
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([userId, contentBlockId])
 }

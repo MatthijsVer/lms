@@ -1,0 +1,341 @@
+"use client";
+
+import { ContentBlock, ContentBlockType } from "@/lib/content-blocks";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Plus,
+  Video,
+  FileText,
+  Image,
+  HelpCircle,
+  Code,
+  FileDown,
+  Music,
+  GripVertical,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  Square,
+  Space,
+  CreditCard,
+} from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { VideoBlockEditor } from "./editors/VideoBlockEditor";
+import { TextBlockEditor } from "./editors/TextBlockEditor";
+import { ImageBlockEditor } from "./editors/ImageBlockEditor";
+import { QuizBlockEditor } from "./editors/QuizBlockEditor";
+import { FillInBlankBlockEditor } from "./editors/FillInBlankBlockEditor";
+import { FlashCardBlockEditor } from "./editors/FlashCardBlockEditor";
+
+interface ContentBlockEditorProps {
+  blocks: ContentBlock[];
+  onChange: (blocks: ContentBlock[]) => void;
+}
+
+const blockIcons = {
+  [ContentBlockType.VIDEO]: Video,
+  [ContentBlockType.TEXT]: FileText,
+  [ContentBlockType.IMAGE]: Image,
+  [ContentBlockType.QUIZ]: HelpCircle,
+  [ContentBlockType.EXERCISE]: FileText,
+  [ContentBlockType.CODE]: Code,
+  [ContentBlockType.PDF]: FileDown,
+  [ContentBlockType.AUDIO]: Music,
+  [ContentBlockType.DOWNLOAD]: FileDown,
+  [ContentBlockType.FILL_IN_BLANK]: Square,
+  [ContentBlockType.FLASHCARD]: CreditCard,
+};
+
+const blockLabels = {
+  [ContentBlockType.VIDEO]: "Video",
+  [ContentBlockType.TEXT]: "Text",
+  [ContentBlockType.IMAGE]: "Image",
+  [ContentBlockType.QUIZ]: "Quiz",
+  [ContentBlockType.EXERCISE]: "Exercise",
+  [ContentBlockType.CODE]: "Code",
+  [ContentBlockType.PDF]: "PDF",
+  [ContentBlockType.AUDIO]: "Audio",
+  [ContentBlockType.DOWNLOAD]: "Download",
+  [ContentBlockType.FILL_IN_BLANK]: "Fill in the Blank",
+  [ContentBlockType.FLASHCARD]: "Flashcards",
+};
+
+export function ContentBlockEditor({
+  blocks,
+  onChange,
+}: ContentBlockEditorProps) {
+  const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set());
+
+  const addBlock = (type: ContentBlockType) => {
+    const newBlock: ContentBlock = {
+      type,
+      position: blocks.length,
+      content: getDefaultContent(type),
+    } as ContentBlock;
+
+    onChange([...blocks, newBlock]);
+    setExpandedBlocks(new Set([...expandedBlocks, blocks.length]));
+  };
+
+  const updateBlock = (index: number, updatedBlock: ContentBlock) => {
+    const newBlocks = [...blocks];
+    newBlocks[index] = updatedBlock;
+    onChange(newBlocks);
+  };
+
+  const deleteBlock = (index: number) => {
+    const newBlocks = blocks.filter((_, i) => i !== index);
+    // Update positions
+    newBlocks.forEach((block, i) => {
+      block.position = i;
+    });
+    onChange(newBlocks);
+  };
+
+  const moveBlock = (index: number, direction: "up" | "down") => {
+    if (
+      (direction === "up" && index === 0) ||
+      (direction === "down" && index === blocks.length - 1)
+    ) {
+      return;
+    }
+
+    const newBlocks = [...blocks];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+
+    // Swap blocks
+    [newBlocks[index], newBlocks[targetIndex]] = [
+      newBlocks[targetIndex],
+      newBlocks[index],
+    ];
+
+    // Update positions
+    newBlocks.forEach((block, i) => {
+      block.position = i;
+    });
+
+    onChange(newBlocks);
+  };
+
+  const toggleExpanded = (index: number) => {
+    const newExpanded = new Set(expandedBlocks);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedBlocks(newExpanded);
+  };
+
+  const renderBlockEditor = (block: ContentBlock, index: number) => {
+    switch (block.type) {
+      case ContentBlockType.VIDEO:
+        return (
+          <VideoBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.TEXT:
+        return (
+          <TextBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.IMAGE:
+        return (
+          <ImageBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.QUIZ:
+        return (
+          <QuizBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.FILL_IN_BLANK:
+        return (
+          <FillInBlankBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.FLASHCARD:
+        return (
+          <FlashCardBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      default:
+        return (
+          <div className="text-muted-foreground">
+            Editor for {block.type} coming soon...
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, index) => {
+        const Icon = blockIcons[block.type];
+        const isExpanded = expandedBlocks.has(index);
+
+        return (
+          <Card key={index} className="overflow-hidden py-0 bg-muted">
+            <CardHeader className="p-4">
+              <div className="flex items-center gap-2">
+                <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
+                <Icon className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium">{blockLabels[block.type]}</span>
+
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => moveBlock(index, "up")}
+                    disabled={index === 0}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => moveBlock(index, "down")}
+                    disabled={index === blocks.length - 1}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleExpanded(index)}
+                  >
+                    {isExpanded ? "Collapse" : "Expand"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteBlock(index)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+
+            {isExpanded && (
+              <CardContent className="p-4 pt-0">
+                {renderBlockEditor(block, index)}
+              </CardContent>
+            )}
+          </Card>
+        );
+      })}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Content Block
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56">
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.VIDEO)}>
+            <Video className="h-4 w-4 mr-2" />
+            Video
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.TEXT)}>
+            <FileText className="h-4 w-4 mr-2" />
+            Text
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.IMAGE)}>
+            <Image className="h-4 w-4 mr-2" />
+            Image
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.QUIZ)}>
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Quiz
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addBlock(ContentBlockType.FILL_IN_BLANK)}
+          >
+            <Space className="h-4 w-4 mr-2" />
+            Fill in the Blank
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addBlock(ContentBlockType.FLASHCARD)}
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Flashcards
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.CODE)}>
+            <Code className="h-4 w-4 mr-2" />
+            Code
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function getDefaultContent(type: ContentBlockType): any {
+  switch (type) {
+    case ContentBlockType.VIDEO:
+      return { videoKey: "", title: "" };
+    case ContentBlockType.TEXT:
+      return { text: "", format: "markdown" };
+    case ContentBlockType.IMAGE:
+      return { imageKey: "", alt: "", caption: "" };
+    case ContentBlockType.QUIZ:
+      return {
+        question: "",
+        options: [],
+        explanation: "",
+        points: 1,
+        allowMultipleAttempts: true,
+        showCorrectAnswer: true,
+        randomizeOptions: false,
+      };
+    case ContentBlockType.EXERCISE:
+      return { title: "", instructions: "" };
+    case ContentBlockType.CODE:
+      return { code: "", language: "javascript" };
+    case ContentBlockType.PDF:
+      return { pdfKey: "", title: "" };
+    case ContentBlockType.AUDIO:
+      return { audioKey: "", title: "" };
+    case ContentBlockType.DOWNLOAD:
+      return { fileKey: "", fileName: "" };
+    case ContentBlockType.FILL_IN_BLANK:
+      return {
+        text: "",
+        blanks: [],
+        instructions: "",
+        points: 1,
+        showHints: true,
+      };
+    case ContentBlockType.FLASHCARD:
+      return {
+        title: "",
+        instructions: "",
+        cards: [],
+        shuffleCards: true,
+        showProgress: true,
+        allowFlip: true,
+      };
+  }
+}

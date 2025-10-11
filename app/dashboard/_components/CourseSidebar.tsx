@@ -77,7 +77,7 @@ export function CourseSidebar({ course }: iAppProps) {
                 </div>
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 pl-6 border-l-2 space-y-3">
+            <CollapsibleContent className="mt-3 pl-6 border-l space-y-3">
               {chapter.lessons.map((lesson) => (
                 <LessonItem
                   key={lesson.id}
