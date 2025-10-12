@@ -6,6 +6,17 @@ Marshal LMS is a Next.js App Router project. Route segments for auth, dashboard,
 ## Build, Test, and Development Commands
 Run `npm install` to sync dependencies (the repo tracks `package-lock.json`). Use `npm run dev` to launch Turbopack on http://localhost:3000 and watch Prisma logs. Ship-ready builds require `npm run build`, followed by `npm run start` for a production smoke test. Run `npm run lint` before opening a PR. Update the Prisma client with `npx prisma generate`, and apply schema changes locally using `npx prisma migrate dev --name <change>`.
 
+Key commands:
+```bash
+npm install
+npm run dev
+npm run build
+npm run start
+npm run lint
+npx prisma generate
+npx prisma migrate dev --name <change>
+```
+
 ## Coding Style & Naming Conventions
 Author TypeScript functional components with named exports and colocate helpers next to their features. Follow 2-space indentation, trailing commas, and single quotes in TS/TSX (string literals in JSX props may stay double quoted). Prefer the `cn` utility for Tailwind class composition, ordering utilities roughly layout → spacing → color. Extend existing `components/ui` primitives before adding new variants.
 

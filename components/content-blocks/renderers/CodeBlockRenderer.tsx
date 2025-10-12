@@ -118,7 +118,7 @@ export function CodeBlockRenderer({
             "overflow-x-auto whitespace-pre text-sm leading-6",
             "bg-slate-950 text-slate-100 dark:bg-slate-900/90",
             "px-4 py-4 font-mono",
-            expanded ? " max-h-[90vh]" : "max-h-full"
+            expanded ? " max-h-full" : "max-h-[90vh]"
           )}
           id={`code-block-${blockId}`}
           data-language={language}
