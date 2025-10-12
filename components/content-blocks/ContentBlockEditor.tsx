@@ -42,6 +42,7 @@ import { MatchingBlockEditor } from "./editors/MatchingBlockEditor";
 import { OrderingBlockEditor } from "./editors/OrderingBlockEditor";
 import { DragDropBlockEditor } from "./editors/DragDropBlockEditor";
 import { TimelineBlockEditor } from "./editors/TimelineBlockEditor";
+import { CodeBlockEditor } from "./editors/CodeBlockEditor";
 
 interface ContentBlockEditorProps {
   blocks: ContentBlock[];
@@ -219,6 +220,13 @@ export function ContentBlockEditor({
       case ContentBlockType.TIMELINE:
         return (
           <TimelineBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.CODE:
+        return (
+          <CodeBlockEditor
             block={block}
             onChange={(b) => updateBlock(index, b)}
           />

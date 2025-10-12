@@ -11,6 +11,7 @@ import { MatchingBlockRenderer } from "./renderers/MatchingBlockRenderer";
 import { OrderingBlockRenderer } from "./renderers/OrderingBlockRenderer";
 import { DragDropBlockRenderer } from "./renderers/DragDropBlockRenderer";
 import { TimelineBlockRenderer } from "./renderers/TimelineBlockRenderer";
+import { CodeBlockRenderer } from "./renderers/CodeBlockRenderer";
 
 interface ContentBlockData {
   id: string;
@@ -115,6 +116,14 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
             content={block.content}
             blockId={block.id}
             lessonId={lessonId}
+          />
+        );
+      case ContentBlockType.CODE:
+        return (
+          <CodeBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
           />
         );
       default:

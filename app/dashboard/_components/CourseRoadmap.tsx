@@ -357,7 +357,7 @@ export function CourseRoadmap({ data }: GameRoadmapProps) {
                     : 52;
 
             const base =
-              "absolute -translate-x-1/2 -translate-y-1/2 rounded-full grid place-items-center select-none transition-transform duration-300 border";
+              "absolute -translate-x-1/2 -translate-y-1/2 rounded bg-primary/10 grid place-items-center select-none transition-transform duration-300 border";
 
             const interactive =
               n.kind === "lesson" && !n.isLocked
