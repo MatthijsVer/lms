@@ -100,7 +100,7 @@ The JSON should follow this structure:
       "type": "FILL_IN_BLANK",
       "position": 3,
       "content": {
-        "text": "The [______] is an example sentence with [______].",
+        "text": "The {{blank}} is an example sentence with {{blank}}.",
         "instructions": "Fill in the blanks",
         "blanks": [
           {

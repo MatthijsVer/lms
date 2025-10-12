@@ -25,6 +25,10 @@ import {
   Square,
   Space,
   CreditCard,
+  Link2,
+  ArrowUpDown,
+  Move,
+  MapPin,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -34,6 +38,10 @@ import { ImageBlockEditor } from "./editors/ImageBlockEditor";
 import { QuizBlockEditor } from "./editors/QuizBlockEditor";
 import { FillInBlankBlockEditor } from "./editors/FillInBlankBlockEditor";
 import { FlashCardBlockEditor } from "./editors/FlashCardBlockEditor";
+import { MatchingBlockEditor } from "./editors/MatchingBlockEditor";
+import { OrderingBlockEditor } from "./editors/OrderingBlockEditor";
+import { DragDropBlockEditor } from "./editors/DragDropBlockEditor";
+import { TimelineBlockEditor } from "./editors/TimelineBlockEditor";
 
 interface ContentBlockEditorProps {
   blocks: ContentBlock[];
@@ -52,6 +60,10 @@ const blockIcons = {
   [ContentBlockType.DOWNLOAD]: FileDown,
   [ContentBlockType.FILL_IN_BLANK]: Square,
   [ContentBlockType.FLASHCARD]: CreditCard,
+  [ContentBlockType.MATCHING]: Link2,
+  [ContentBlockType.ORDERING]: ArrowUpDown,
+  [ContentBlockType.DRAG_DROP]: Move,
+  [ContentBlockType.TIMELINE]: MapPin,
 };
 
 const blockLabels = {
@@ -66,6 +78,10 @@ const blockLabels = {
   [ContentBlockType.DOWNLOAD]: "Download",
   [ContentBlockType.FILL_IN_BLANK]: "Fill in the Blank",
   [ContentBlockType.FLASHCARD]: "Flashcards",
+  [ContentBlockType.MATCHING]: "Matching",
+  [ContentBlockType.ORDERING]: "Ordering",
+  [ContentBlockType.DRAG_DROP]: "Drag & Drop",
+  [ContentBlockType.TIMELINE]: "Timeline",
 };
 
 export function ContentBlockEditor({
@@ -179,6 +195,34 @@ export function ContentBlockEditor({
             onChange={(b) => updateBlock(index, b)}
           />
         );
+      case ContentBlockType.MATCHING:
+        return (
+          <MatchingBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.ORDERING:
+        return (
+          <OrderingBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.DRAG_DROP:
+        return (
+          <DragDropBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.TIMELINE:
+        return (
+          <TimelineBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
       default:
         return (
           <div className="text-muted-foreground">
@@ -282,6 +326,30 @@ export function ContentBlockEditor({
             <CreditCard className="h-4 w-4 mr-2" />
             Flashcards
           </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addBlock(ContentBlockType.MATCHING)}
+          >
+            <Link2 className="h-4 w-4 mr-2" />
+            Matching
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addBlock(ContentBlockType.ORDERING)}
+          >
+            <ArrowUpDown className="h-4 w-4 mr-2" />
+            Ordering
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addBlock(ContentBlockType.DRAG_DROP)}
+          >
+            <Move className="h-4 w-4 mr-2" />
+            Drag & Drop
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addBlock(ContentBlockType.TIMELINE)}
+          >
+            <MapPin className="h-4 w-4 mr-2" />
+            Timeline
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock(ContentBlockType.CODE)}>
             <Code className="h-4 w-4 mr-2" />
             Code
@@ -336,6 +404,56 @@ function getDefaultContent(type: ContentBlockType): any {
         shuffleCards: true,
         showProgress: true,
         allowFlip: true,
+      };
+    case ContentBlockType.MATCHING:
+      return {
+        title: "",
+        instructions: "Draw lines to connect related items.",
+        pairs: [],
+        shuffleItems: true,
+        showFeedback: true,
+        allowHints: true,
+        points: 1,
+      };
+    case ContentBlockType.ORDERING:
+      return {
+        title: "",
+        instructions: "Drag and drop the items to arrange them in the correct order.",
+        items: [],
+        shuffleItems: true,
+        showPositionNumbers: true,
+        allowPartialCredit: true,
+        showFeedback: true,
+        allowHints: true,
+        points: 1,
+      };
+    case ContentBlockType.DRAG_DROP:
+      return {
+        title: "",
+        instructions: "Drag the tokens from the bank into the correct target areas.",
+        tokens: [],
+        targets: [],
+        shuffleTokens: true,
+        showTargetLabels: true,
+        allowPartialCredit: true,
+        showFeedback: true,
+        allowHints: true,
+        returnToBank: true,
+        points: 1,
+      };
+    case ContentBlockType.TIMELINE:
+      return {
+        title: "",
+        instructions: "Drag and drop the events to arrange them in chronological order from earliest to latest.",
+        events: [],
+        layout: "vertical",
+        showDates: true,
+        showTimes: true,
+        chronological: true,
+        allowPartialCredit: true,
+        shuffleEvents: true,
+        allowHints: true,
+        points: 1,
       };
   }
 }

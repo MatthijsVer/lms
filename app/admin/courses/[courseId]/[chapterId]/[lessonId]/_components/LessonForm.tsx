@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { lessonSchema, LessonSchemaType } from "@/lib/zodSchemas";
-import { ArrowLeft, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Play, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -140,20 +140,6 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lesson Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter lesson name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="thumbnailKey"
                 render={({ field }) => (
                   <FormItem>
@@ -164,6 +150,20 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
                         onChange={field.onChange}
                         value={field.value}
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lesson Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter lesson name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -234,18 +234,24 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
                         </p>
                       </div>
 
-                      {/* AI Generator Button */}
-                      <AILessonGeneratorDialog
-                        onContentGenerated={handleAIContentGenerated}
-                        existingBlocks={contentBlocks}
-                        lessonTitle={form.getValues("name")}
-                        trigger={
-                          <Button variant="outline" size="sm" type="button">
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Generate with AI
-                          </Button>
-                        }
-                      />
+                      <div className="flex items-center gap-4">
+                        {/* AI Generator Button */}
+                        <AILessonGeneratorDialog
+                          onContentGenerated={handleAIContentGenerated}
+                          existingBlocks={contentBlocks}
+                          lessonTitle={form.getValues("name")}
+                          trigger={
+                            <Button variant="outline" size="sm" type="button">
+                              <Sparkles className="h-4 w-4" />
+                              Generate with AI
+                            </Button>
+                          }
+                        />
+                        <Button size={"sm"}>
+                          <Play className="h-4 w-4" />
+                          Preview
+                        </Button>
+                      </div>
                     </div>
 
                     {contentBlocks.length === 0 && (

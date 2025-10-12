@@ -120,12 +120,12 @@ export function CourseContent({ data }: iAppProps) {
             variant="outline"
             className="bg-green-500/10 text-green-500 hover:text-green-600"
           >
-            <CheckCircle className="size-4 mr-2 text-green-500" />
+            <CheckCircle className="size-4 text-green-500" />
             Completed
           </Button>
         ) : (
           <Button variant="outline" onClick={onSubmit} disabled={pending}>
-            <CheckCircle className="size-4 mr-2 text-green-500" />
+            <CheckCircle className="size-4 text-green-500" />
             Mark as Complete
           </Button>
         )}

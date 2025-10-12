@@ -36,6 +36,91 @@ export const FillInBlankContentSchema = z.object({
   showHints: z.boolean().default(true)
 });
 
+export const MatchingContentSchema = z.object({
+  title: z.string().optional(),
+  instructions: z.string(),
+  pairs: z.array(z.object({
+    id: z.string(),
+    leftItem: z.string(),
+    rightItem: z.string(),
+    explanation: z.string().optional()
+  })),
+  shuffleItems: z.boolean().default(true),
+  showFeedback: z.boolean().default(true),
+  allowHints: z.boolean().default(true),
+  points: z.number().default(5),
+  timeLimit: z.number().optional()
+});
+
+export const OrderingContentSchema = z.object({
+  title: z.string().optional(),
+  instructions: z.string(),
+  items: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    correctPosition: z.number(),
+    explanation: z.string().optional(),
+    hint: z.string().optional()
+  })),
+  shuffleItems: z.boolean().default(true),
+  showPositionNumbers: z.boolean().default(true),
+  allowPartialCredit: z.boolean().default(true),
+  showFeedback: z.boolean().default(true),
+  allowHints: z.boolean().default(true),
+  points: z.number().default(5),
+  timeLimit: z.number().optional()
+});
+
+export const DragDropContentSchema = z.object({
+  title: z.string().optional(),
+  instructions: z.string(),
+  tokens: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    correctTargets: z.array(z.string()),
+    hint: z.string().optional()
+  })),
+  targets: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    description: z.string().optional(),
+    maxItems: z.number().optional(),
+    acceptsMultiple: z.boolean().default(true)
+  })),
+  shuffleTokens: z.boolean().default(true),
+  showTargetLabels: z.boolean().default(true),
+  allowPartialCredit: z.boolean().default(true),
+  showFeedback: z.boolean().default(true),
+  allowHints: z.boolean().default(true),
+  returnToBank: z.boolean().default(true),
+  points: z.number().default(5),
+  timeLimit: z.number().optional()
+});
+
+export const TimelineContentSchema = z.object({
+  title: z.string().optional(),
+  instructions: z.string(),
+  events: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    date: z.string(),
+    time: z.string().optional(),
+    type: z.enum(["milestone", "event", "deadline", "achievement"]).default("event"),
+    icon: z.string().optional(),
+    color: z.string().optional(),
+    metadata: z.record(z.any()).optional()
+  })),
+  layout: z.enum(["vertical", "horizontal"]).default("vertical"),
+  showDates: z.boolean().default(true),
+  showTimes: z.boolean().default(true),
+  chronological: z.boolean().default(true),
+  allowPartialCredit: z.boolean().default(true),
+  shuffleEvents: z.boolean().default(true),
+  allowHints: z.boolean().default(true),
+  points: z.number().default(5)
+});
+
 export const TextContentSchema = z.object({
   title: z.string(),
   text: z.string(),
@@ -57,7 +142,7 @@ export const LessonSchema = z.object({
   contentBlocks: z.array(z.object({
     type: z.enum([
       'VIDEO', 'TEXT', 'IMAGE', 'QUIZ', 'EXERCISE',
-      'CODE', 'PDF', 'AUDIO', 'DOWNLOAD', 'FILL_IN_BLANK', 'FLASHCARD'
+      'CODE', 'PDF', 'AUDIO', 'DOWNLOAD', 'FILL_IN_BLANK', 'FLASHCARD', 'MATCHING', 'ORDERING', 'DRAG_DROP', 'TIMELINE'
     ]),
     position: z.number(),
     content: z.record(z.any())
@@ -149,6 +234,10 @@ export class LessonAIService {
      * VIDEO: Visual demonstrations (note: placeholder keys will be used)
      * QUIZ: Multiple choice questions for assessment
      * FILL_IN_BLANK: Interactive completion exercises
+     * MATCHING: Pair matching activities for relationships/associations
+     * ORDERING: Sequential arrangement of steps/processes/events
+     * DRAG_DROP: Categorization by dragging tokens into target areas
+     * TIMELINE: Chronological or sequential display of events with detailed information
      * EXERCISE: Practice problems
      * CODE: Programming examples (if applicable)
    - Understand the balance they want
@@ -181,10 +270,40 @@ When generating the lesson JSON, create rich, educational content:
 
 ### FILL_IN_BLANK Blocks
 - Create meaningful sentences with strategic blanks
-- Use [______] format in the text
+- Use {{blank}} format in the text
 - Provide multiple acceptable answers when appropriate
 - Include helpful hints
 - Target key vocabulary or concepts
+
+### MATCHING Blocks
+- Create pairs of related items for students to connect
+- Use for relationships, definitions, cause-effect, etc.
+- Include explanations for each pair when helpful
+- Typically 4-6 pairs work best for engagement
+- Left items should be concise, right items can be longer
+
+### ORDERING Blocks
+- Create sequences of steps, events, or processes to be arranged
+- Perfect for procedures, timelines, workflows, recipes
+- Include explanations for why each item goes in its position
+- Typically 4-8 items work best for cognitive load
+- Consider chronological, logical, or priority-based ordering
+
+### DRAG_DROP Blocks
+- Create categorization activities with draggable tokens and target areas
+- Perfect for sorting items by properties, types, or categories
+- Tokens can belong to multiple targets or just one
+- Include clear target labels and descriptions
+- Typically 6-12 tokens across 2-4 targets work well
+
+### TIMELINE Blocks
+- Create interactive chronological ordering exercises where students arrange events in correct sequence
+- Perfect for historical sequences, process steps, project timelines, biographical events
+- Events should have clear titles, accurate dates, and descriptions (used as hints)
+- Use appropriate event types: milestone, event, deadline, achievement
+- Typically 4-8 events work best for an engaging ordering challenge
+- Students drag and drop events into chronological order from earliest to latest
+- Include meaningful descriptions that can serve as helpful hints after submission
 
 ### Example Structure:
 \`\`\`json
@@ -224,7 +343,7 @@ When generating the lesson JSON, create rich, educational content:
       "type": "FILL_IN_BLANK",
       "position": 3,
       "content": {
-        "text": "The [______] is responsible for [______] in the system.",
+        "text": "The {{blank}} is responsible for {{blank}} in the system.",
         "instructions": "Complete the sentence with the appropriate terms.",
         "blanks": [
           {
@@ -244,6 +363,167 @@ When generating the lesson JSON, create rich, educational content:
         ],
         "points": 5,
         "showHints": true
+      }
+    },
+    {
+      "type": "MATCHING",
+      "position": 4,
+      "content": {
+        "title": "Match Related Items",
+        "instructions": "Draw lines to connect each item on the left with its matching item on the right.",
+        "pairs": [
+          {
+            "id": "pair1",
+            "leftItem": "Capital of France",
+            "rightItem": "Paris",
+            "explanation": "Paris has been the capital of France since 987 AD."
+          },
+          {
+            "id": "pair2",
+            "leftItem": "Largest Ocean",
+            "rightItem": "Pacific",
+            "explanation": "The Pacific Ocean covers about 46% of the Earth's water surface."
+          }
+        ],
+        "shuffleItems": true,
+        "showFeedback": true,
+        "allowHints": true,
+        "points": 5
+      }
+    },
+    {
+      "type": "ORDERING",
+      "position": 5,
+      "content": {
+        "title": "Steps in Order",
+        "instructions": "Drag and drop the steps to arrange them in the correct order.",
+        "items": [
+          {
+            "id": "step1",
+            "text": "Gather all ingredients",
+            "correctPosition": 0,
+            "explanation": "Always start by preparing all materials before beginning.",
+            "hint": "This should be done first"
+          },
+          {
+            "id": "step2",
+            "text": "Preheat the oven",
+            "correctPosition": 1,
+            "explanation": "Preheating ensures consistent cooking temperature.",
+            "hint": "Temperature is important for cooking"
+          },
+          {
+            "id": "step3",
+            "text": "Mix dry ingredients",
+            "correctPosition": 2,
+            "explanation": "Dry ingredients should be combined before adding wet ingredients.",
+            "hint": "Start with the powders and solids"
+          }
+        ],
+        "shuffleItems": true,
+        "showPositionNumbers": true,
+        "allowPartialCredit": true,
+        "showFeedback": true,
+        "allowHints": true,
+        "points": 5
+      }
+    },
+    {
+      "type": "DRAG_DROP",
+      "position": 6,
+      "content": {
+        "title": "Categorize Items",
+        "instructions": "Drag each token from the bank into the correct category.",
+        "tokens": [
+          {
+            "id": "token1",
+            "text": "Apple",
+            "correctTargets": ["fruits"],
+            "hint": "This grows on trees"
+          },
+          {
+            "id": "token2",
+            "text": "Carrot",
+            "correctTargets": ["vegetables"],
+            "hint": "This grows underground"
+          },
+          {
+            "id": "token3",
+            "text": "Red",
+            "correctTargets": ["colors"],
+            "hint": "This is a primary color"
+          }
+        ],
+        "targets": [
+          {
+            "id": "fruits",
+            "label": "Fruits",
+            "description": "Sweet foods that grow on plants",
+            "acceptsMultiple": true
+          },
+          {
+            "id": "vegetables",
+            "label": "Vegetables",
+            "description": "Nutritious plant parts we eat",
+            "acceptsMultiple": true
+          },
+          {
+            "id": "colors",
+            "label": "Colors",
+            "description": "Visual properties we can see",
+            "acceptsMultiple": true
+          }
+        ],
+        "shuffleTokens": true,
+        "showTargetLabels": true,
+        "allowPartialCredit": true,
+        "showFeedback": true,
+        "allowHints": true,
+        "returnToBank": true,
+        "points": 5
+      }
+    },
+    {
+      "type": "TIMELINE",
+      "position": 7,
+      "content": {
+        "title": "Historical Development Timeline",
+        "instructions": "Drag and drop the events to arrange them in chronological order from earliest to latest.",
+        "events": [
+          {
+            "id": "event1",
+            "title": "Early Discovery",
+            "description": "This discovery happened in the mid-19th century and laid the foundation for all future work.",
+            "date": "1850-01-15",
+            "type": "milestone",
+            "color": "#fbbf24"
+          },
+          {
+            "id": "event2", 
+            "title": "Major Breakthrough", 
+            "description": "This achievement occurred in the early 20th century and revolutionized the field.",
+            "date": "1920-06-10",
+            "time": "14:30",
+            "type": "achievement",
+            "color": "#10b981"
+          },
+          {
+            "id": "event3",
+            "title": "Modern Application",
+            "description": "This development happened at the turn of the 21st century.",
+            "date": "2000-12-01",
+            "type": "event",
+            "color": "#3b82f6"
+          }
+        ],
+        "layout": "vertical",
+        "showDates": true,
+        "showTimes": true,
+        "chronological": true,
+        "allowPartialCredit": true,
+        "shuffleEvents": true,
+        "allowHints": true,
+        "points": 5
       }
     }
   ]

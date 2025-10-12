@@ -1,6 +1,16 @@
-import { ContentBlock, TextContent, ContentBlockType } from "@/lib/content-blocks";
+import {
+  ContentBlock,
+  TextContent,
+  ContentBlockType,
+} from "@/lib/content-blocks";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RichTextEditor } from "@/components/rich-text-editor/Editor";
 
 interface TextBlockEditorProps {
@@ -21,16 +31,16 @@ export function TextBlockEditor({ block, onChange }: TextBlockEditorProps) {
 
   const field = {
     value: block.content.text,
-    onChange: (value: string) => updateContent({ text: value })
+    onChange: (value: string) => updateContent({ text: value }),
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col">
       <div>
-        <Label>Format</Label>
+        <Label className="mb-2">Format</Label>
         <Select
           value={block.content.format || "markdown"}
-          onValueChange={(value: "markdown" | "html" | "plain") => 
+          onValueChange={(value: "markdown" | "html" | "plain") =>
             updateContent({ format: value })
           }
         >
@@ -44,9 +54,9 @@ export function TextBlockEditor({ block, onChange }: TextBlockEditorProps) {
           </SelectContent>
         </Select>
       </div>
-      
+
       <div>
-        <Label>Content</Label>
+        <Label className="mb-2">Content</Label>
         <RichTextEditor field={field} />
       </div>
     </div>

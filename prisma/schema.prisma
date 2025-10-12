@@ -178,6 +178,10 @@ enum ContentBlockType {
   DOWNLOAD
   FILL_IN_BLANK
   FLASHCARD
+  MATCHING
+  ORDERING
+  DRAG_DROP
+  TIMELINE
 }
 
 model Enrollment {

@@ -7,6 +7,10 @@ import { ImageBlockRenderer } from "./renderers/ImageBlockRenderer";
 import { QuizBlockRenderer } from "./renderers/QuizBlockRenderer";
 import { FillInBlankBlockRenderer } from "./renderers/FillInBlankBlockRenderer";
 import { FlashCardBlockRenderer } from "./renderers/FlashCardBlockRenderer";
+import { MatchingBlockRenderer } from "./renderers/MatchingBlockRenderer";
+import { OrderingBlockRenderer } from "./renderers/OrderingBlockRenderer";
+import { DragDropBlockRenderer } from "./renderers/DragDropBlockRenderer";
+import { TimelineBlockRenderer } from "./renderers/TimelineBlockRenderer";
 
 interface ContentBlockData {
   id: string;
@@ -75,6 +79,42 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
             key={block.id}
             content={block.content}
             blockId={block.id}
+          />
+        );
+      case ContentBlockType.MATCHING:
+        return (
+          <MatchingBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
+            lessonId={lessonId}
+          />
+        );
+      case ContentBlockType.ORDERING:
+        return (
+          <OrderingBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
+            lessonId={lessonId}
+          />
+        );
+      case ContentBlockType.DRAG_DROP:
+        return (
+          <DragDropBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
+            lessonId={lessonId}
+          />
+        );
+      case ContentBlockType.TIMELINE:
+        return (
+          <TimelineBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
+            lessonId={lessonId}
           />
         );
       default:

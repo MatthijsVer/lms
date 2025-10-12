@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="pt-4">
+    <div className="p-6">
       <div className="flex flex-col gap-0.5 mb-6">
         <h1 className="text-xl font-bold">Enrolled Courses</h1>
         <p className="text-muted-foreground">

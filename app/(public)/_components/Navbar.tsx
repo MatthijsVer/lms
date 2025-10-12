@@ -27,7 +27,7 @@ export function Navbar() {
 
         {/* Desktop navigation */}
         <nav className="hidden md:flex md:flex-1 md:items-center md:justify-between">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-6 ml-6">
             {navigationItems.map((item) => (
               <Link
                 key={item.name}
