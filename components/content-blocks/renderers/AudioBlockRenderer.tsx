@@ -15,7 +15,7 @@ export function AudioBlockRenderer({ content, blockId }: AudioBlockRendererProps
   const [showTranscript, setShowTranscript] = useState(
     content.shouldShowTranscript !== false
   );
-  const audioUrl = content.audioKey ? useConstructUrl(content.audioKey) : "";
+  const audioUrl = useConstructUrl(content.audioKey || "");
 
   if (!content.audioKey) {
     return (

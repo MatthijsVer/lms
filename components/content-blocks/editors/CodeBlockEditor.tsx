@@ -131,13 +131,20 @@ export function CodeBlockEditor({ block, onChange }: CodeBlockEditorProps) {
         />
         <div className="space-y-1">
           <Label htmlFor="code-block-runnable" className="text-sm">
-            Mark as runnable
+            Enable in-browser runner
           </Label>
           <FormDescription>
-            Flags snippets that learners are expected to run locally. The portal
-            does not execute code, but this flag can surface additional
-            instructions.
+            Runs JavaScript snippets in a sandbox directly in the lesson.
+            Other languages display the code without execution.
           </FormDescription>
+          {block.content.runnable &&
+            block.content.language &&
+            block.content.language !== "javascript" && (
+              <p className="text-xs text-muted-foreground">
+                Heads-up: only JavaScript executes in-browser. Learners will see
+                the snippet but cannot run it here.
+              </p>
+            )}
         </div>
       </div>
     </div>
