@@ -53,7 +53,7 @@ async function RenderRecentCourses() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
       {data.map((course) => (
         <AdminCourseCard key={course.id} data={course} />
       ))}
@@ -63,7 +63,7 @@ async function RenderRecentCourses() {
 
 function RenderRecentCoursesSkeletonLayout() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
       {Array.from({ length: 2 }).map((_, index) => (
         <AdminCourseCardSkeleton key={index} />
       ))}

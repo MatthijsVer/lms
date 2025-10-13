@@ -29,12 +29,12 @@ interface iAppProps {
 export function AdminCourseCard({ data }: iAppProps) {
   const thumbnailUrl = useConstructUrl(data.fileKey);
   return (
-    <Card className="group relative rounded-2xl py-0 gap-0">
+    <Card className="group relative rounded py-0 gap-0">
       {/* absolute dropdrown */}
       <div className="absolute top-2 right-2 z-10">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="icon">
+            <Button size="icon" className="bg-primary/60 border border-primary">
               <MoreVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -67,7 +67,7 @@ export function AdminCourseCard({ data }: iAppProps) {
         alt="Thumbnail Url"
         width={600}
         height={300}
-        className="w-full rounded-t-2xl aspect-video max-h-[160px] h-full object-cover"
+        className="w-full rounded-t aspect-video max-h-[200px] h-full object-cover"
       />
 
       <CardContent className="p-4">

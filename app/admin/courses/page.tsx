@@ -1,5 +1,5 @@
 import { adminGetCourses } from "@/app/data/admin/admin-get-courses";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
   AdminCourseCard,
@@ -7,6 +7,13 @@ import {
 } from "./_components/AdminCourseCard";
 import { EmptyState } from "@/components/general/EmptyState";
 import { Suspense } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sparkles } from "lucide-react";
 
 export default function CoursesPage() {
   return (
@@ -14,9 +21,22 @@ export default function CoursesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Your Courses</h1>
 
-        <Link className={buttonVariants()} href="/admin/courses/create">
-          Create Course
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              New Course
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem asChild>
+              <Link href="/admin/courses/create">Manual entry</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/courses/create/ai">AI course builder</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Suspense fallback={<AdminCourseCardSkeletonLayout />}>

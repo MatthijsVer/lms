@@ -75,7 +75,7 @@ export default async function SlugPage({ params }: { params: Params }) {
               Course Description
             </h2>
 
-            <RenderDescription json={JSON.parse(course.description)} />
+            <RenderDescription json={safeParse(course.description)} />
           </div>
         </div>
 
@@ -277,4 +277,32 @@ export default async function SlugPage({ params }: { params: Params }) {
       </div>
     </div>
   );
+}
+
+function safeParse(value?: string) {
+  if (!value || typeof value !== "string" || value.trim().length === 0) {
+    return {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "" }] }],
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && parsed.type === "doc") {
+      return parsed;
+    }
+  } catch (error) {
+    console.warn("Unable to parse course description JSON", error);
+  }
+
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: value }],
+      },
+    ],
+  };
 }

@@ -7,6 +7,8 @@ import { Menubar } from "./Menubar";
 import TextAlign from "@tiptap/extension-text-align";
 
 export function RichTextEditor({ field }: { field: any }) {
+  const initialContent = safeParse(field.value);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -28,7 +30,7 @@ export function RichTextEditor({ field }: { field: any }) {
       field.onChange(JSON.stringify(editor.getJSON()));
     },
 
-    content: field.value ? JSON.parse(field.value) : "<p>Hello World 🚀</p>",
+    content: initialContent,
   });
 
   return (
@@ -37,4 +39,24 @@ export function RichTextEditor({ field }: { field: any }) {
       <EditorContent editor={editor} />
     </div>
   );
+}
+
+function safeParse(value?: string) {
+  if (!value || typeof value !== "string" || value.trim().length === 0) {
+    return { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "" }] }] };
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && parsed.type === "doc") {
+      return parsed;
+    }
+  } catch (error) {
+    console.warn("Failed to parse rich text JSON", error);
+  }
+
+  return {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: value }] }],
+  };
 }
