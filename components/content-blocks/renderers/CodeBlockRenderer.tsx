@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import { CodeContent } from "@/lib/content-blocks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,81 @@ interface CodeBlockRendererProps {
   blockId: string;
 }
 
+type BundledShiki = typeof import("shiki/bundle/web");
+type Highlighter = Awaited<ReturnType<BundledShiki["getSingletonHighlighter"]>>;
+
+const SHIKI_THEMES = {
+  light: "github-light",
+  dark: "github-dark",
+} as const;
+
+const languageAliases: Record<string, string> = {
+  js: "javascript",
+  ts: "typescript",
+  tsx: "tsx",
+  jsx: "jsx",
+  sh: "bash",
+  shell: "bash",
+  "shell-session": "shell",
+  shellsession: "shell",
+  yml: "yaml",
+  md: "markdown",
+  py: "python",
+  csharp: "csharp",
+  "c#": "csharp",
+  "c++": "cpp",
+  cs: "csharp",
+  html: "html",
+  xml: "xml",
+  rb: "ruby",
+  rs: "rust",
+  kt: "kotlin",
+  ps1: "shell",
+  powershell: "shell",
+  plaintext: "plaintext",
+  plain: "plaintext",
+  text: "plaintext",
+};
+
+let highlighterPromise: Promise<Highlighter | null> | null = null;
+
 function formatLanguageLabel(language?: string) {
   if (!language) return "Plain text";
+  if (language.toLowerCase() === "plaintext") {
+    return "Plain text";
+  }
   return language
     .split(/[-_\s]+/)
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
+}
+
+function resolveLanguage(raw?: string | null) {
+  if (!raw) return "plaintext";
+  const normalized = raw.toLowerCase();
+  return languageAliases[normalized] ?? normalized;
+}
+
+async function loadHighlighter() {
+  if (!highlighterPromise) {
+    highlighterPromise = (async () => {
+      try {
+        const shiki = await import("shiki/bundle/web");
+        await shiki.loadWasm();
+        return shiki.getSingletonHighlighter({
+          themes: [SHIKI_THEMES.light, SHIKI_THEMES.dark],
+        });
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Failed to initialise code highlighter", error);
+        }
+        return null;
+      }
+    })();
+  }
+
+  return highlighterPromise;
 }
 
 export function CodeBlockRenderer({
@@ -27,7 +96,12 @@ export function CodeBlockRenderer({
 }: CodeBlockRendererProps) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [highlightHtml, setHighlightHtml] = useState<string | null>(null);
+  const [highlightError, setHighlightError] = useState(false);
   const copyTimeoutRef = useRef<NodeJS.Timeout>();
+  const { resolvedTheme } = useTheme();
+  const theme =
+    resolvedTheme === "dark" ? SHIKI_THEMES.dark : SHIKI_THEMES.light;
 
   useEffect(() => {
     return () => {
@@ -37,12 +111,80 @@ export function CodeBlockRenderer({
     };
   }, []);
 
+  const rawLanguage = content.language?.trim();
+  const resolvedLanguage = useMemo(
+    () => resolveLanguage(rawLanguage),
+    [rawLanguage]
+  );
+  const languageLabel = formatLanguageLabel(rawLanguage ?? resolvedLanguage);
+
+  useEffect(() => {
+    if (!content.code) {
+      return;
+    }
+
+    let cancelled = false;
+    setHighlightHtml(null);
+    setHighlightError(false);
+
+    if (resolvedLanguage === "plaintext") {
+      setHighlightError(true);
+      return;
+    }
+
+    const highlight = async () => {
+      const highlighter = await loadHighlighter();
+      if (!highlighter) {
+        if (!cancelled) {
+          setHighlightError(true);
+        }
+        return;
+      }
+
+      try {
+        if (
+          resolvedLanguage !== "plaintext" &&
+          !highlighter.getLoadedLanguages().includes(resolvedLanguage)
+        ) {
+          await highlighter.loadLanguage(resolvedLanguage);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(
+            `Missing syntax definition for ${resolvedLanguage}`,
+            error
+          );
+        }
+      }
+
+      try {
+        const html = highlighter.codeToHtml(content.code ?? "", {
+          lang: resolvedLanguage,
+          theme,
+        });
+        if (!cancelled) {
+          setHighlightHtml(html);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Failed to render highlighted code", error);
+        }
+        if (!cancelled) {
+          setHighlightError(true);
+        }
+      }
+    };
+
+    highlight();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [content.code, resolvedLanguage, theme]);
+
   if (!content.code) {
     return null;
   }
-
-  const language = content.language || "plaintext";
-  const languageLabel = formatLanguageLabel(language);
 
   const handleCopy = async () => {
     try {
@@ -96,7 +238,7 @@ export function CodeBlockRenderer({
           size="sm"
           onClick={() => setExpanded((current) => !current)}
           className="gap-2 text-xs"
-          aria-label="Copy code to clipboard"
+          aria-label="Toggle code block size"
         >
           {expanded ? (
             <>
@@ -113,20 +255,33 @@ export function CodeBlockRenderer({
       </div>
 
       <div className="relative">
-        <pre
-          className={cn(
-            "overflow-x-auto whitespace-pre text-sm leading-6",
-            "bg-slate-950 text-slate-100 dark:bg-slate-900/90",
-            "px-4 py-4 font-mono",
-            expanded ? " max-h-full" : "max-h-[90vh]"
-          )}
-          id={`code-block-${blockId}`}
-          data-language={language}
-        >
-          <code className={cn("block", `language-${language}`)}>
-            {content.code}
-          </code>
-        </pre>
+        {highlightHtml ? (
+          <div
+            className={cn(
+              "code-block-highlight overflow-auto whitespace-pre text-sm leading-6",
+              "bg-slate-950 text-slate-100 dark:bg-slate-900/90",
+              "px-4 py-4 font-mono",
+              expanded ? "max-h-full" : "max-h-[90vh]"
+            )}
+            id={`code-block-${blockId}`}
+            data-language={resolvedLanguage}
+            dangerouslySetInnerHTML={{ __html: highlightHtml }}
+          />
+        ) : (
+          <pre
+            className={cn(
+              "overflow-auto whitespace-pre text-sm leading-6",
+              "bg-muted text-slate-100 dark:bg-muted",
+              "px-4 py-4 font-mono",
+              expanded ? "max-h-full" : "max-h-[90vh]",
+              highlightError ? "" : "opacity-60"
+            )}
+            id={`code-block-${blockId}`}
+            data-language={resolvedLanguage}
+          >
+            <code className="block">{content.code}</code>
+          </pre>
+        )}
       </div>
     </div>
   );

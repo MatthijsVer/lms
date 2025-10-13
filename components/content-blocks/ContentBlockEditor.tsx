@@ -29,9 +29,9 @@ import {
   ArrowUpDown,
   Move,
   MapPin,
+  ClipboardCheck,
 } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { VideoBlockEditor } from "./editors/VideoBlockEditor";
 import { TextBlockEditor } from "./editors/TextBlockEditor";
 import { ImageBlockEditor } from "./editors/ImageBlockEditor";
@@ -43,6 +43,9 @@ import { OrderingBlockEditor } from "./editors/OrderingBlockEditor";
 import { DragDropBlockEditor } from "./editors/DragDropBlockEditor";
 import { TimelineBlockEditor } from "./editors/TimelineBlockEditor";
 import { CodeBlockEditor } from "./editors/CodeBlockEditor";
+import { PdfBlockEditor } from "./editors/PdfBlockEditor";
+import { AudioBlockEditor } from "./editors/AudioBlockEditor";
+import { ExerciseBlockEditor } from "./editors/ExerciseBlockEditor";
 
 interface ContentBlockEditorProps {
   blocks: ContentBlock[];
@@ -54,7 +57,7 @@ const blockIcons = {
   [ContentBlockType.TEXT]: FileText,
   [ContentBlockType.IMAGE]: Image,
   [ContentBlockType.QUIZ]: HelpCircle,
-  [ContentBlockType.EXERCISE]: FileText,
+  [ContentBlockType.EXERCISE]: ClipboardCheck,
   [ContentBlockType.CODE]: Code,
   [ContentBlockType.PDF]: FileDown,
   [ContentBlockType.AUDIO]: Music,
@@ -182,6 +185,13 @@ export function ContentBlockEditor({
             onChange={(b) => updateBlock(index, b)}
           />
         );
+      case ContentBlockType.EXERCISE:
+        return (
+          <ExerciseBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
       case ContentBlockType.FILL_IN_BLANK:
         return (
           <FillInBlankBlockEditor
@@ -220,6 +230,20 @@ export function ContentBlockEditor({
       case ContentBlockType.TIMELINE:
         return (
           <TimelineBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.AUDIO:
+        return (
+          <AudioBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
+      case ContentBlockType.PDF:
+        return (
+          <PdfBlockEditor
             block={block}
             onChange={(b) => updateBlock(index, b)}
           />
@@ -322,6 +346,10 @@ export function ContentBlockEditor({
             <HelpCircle className="h-4 w-4 mr-2" />
             Quiz
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.EXERCISE)}>
+            <ClipboardCheck className="h-4 w-4 mr-2" />
+            Exercise
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => addBlock(ContentBlockType.FILL_IN_BLANK)}
           >
@@ -358,6 +386,14 @@ export function ContentBlockEditor({
             <MapPin className="h-4 w-4 mr-2" />
             Timeline
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.AUDIO)}>
+            <Music className="h-4 w-4 mr-2" />
+            Audio
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.PDF)}>
+            <FileDown className="h-4 w-4 mr-2" />
+            PDF
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock(ContentBlockType.CODE)}>
             <Code className="h-4 w-4 mr-2" />
             Code
@@ -387,13 +423,24 @@ function getDefaultContent(type: ContentBlockType): any {
         randomizeOptions: false,
       };
     case ContentBlockType.EXERCISE:
-      return { title: "", instructions: "" };
+      return {
+        title: "",
+        instructions: "",
+        expectedOutput: "",
+        hints: [],
+      };
     case ContentBlockType.CODE:
       return { code: "", language: "javascript" };
     case ContentBlockType.PDF:
-      return { pdfKey: "", title: "" };
+      return { pdfKey: "", title: "", description: "", downloadable: true };
     case ContentBlockType.AUDIO:
-      return { audioKey: "", title: "" };
+      return {
+        audioKey: "",
+        title: "",
+        description: "",
+        transcript: "",
+        shouldShowTranscript: true,
+      };
     case ContentBlockType.DOWNLOAD:
       return { fileKey: "", fileName: "" };
     case ContentBlockType.FILL_IN_BLANK:

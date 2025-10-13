@@ -195,6 +195,26 @@ body {
   box-shadow: none;
 }
 
+/* Code block syntax highlighting overrides */
+.code-block-highlight .shiki {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  margin: 0;
+  min-width: 100%;
+  overflow: visible;
+}
+
+.code-block-highlight .shiki code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+
 /* Flashcard 3D flip animation styles */
 .preserve-3d {
   transform-style: preserve-3d;

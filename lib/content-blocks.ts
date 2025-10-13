@@ -74,12 +74,15 @@ export interface PdfContent {
   pdfKey: string;
   title: string;
   downloadable?: boolean;
+  description?: string;
 }
 
 export interface AudioContent {
   audioKey: string;
   title?: string;
   transcript?: string;
+  description?: string;
+  shouldShowTranscript?: boolean;
 }
 
 export interface DownloadContent {

@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { useConstructUrl } from "@/hooks/use-construct-url";
 
+type SupportedFileType = "image" | "video" | "document" | "audio";
+
 interface UploaderState {
   id: string | null;
   file: File | null;
@@ -23,17 +25,42 @@ interface UploaderState {
   isDeleting: boolean;
   error: boolean;
   objectUrl?: string;
-  fileType: "image" | "video";
+  fileType: SupportedFileType;
+  fileName?: string;
 }
 
-interface iAppProps {
+interface UploaderProps {
   value?: string;
   onChange?: (value: string) => void;
-  fileTypeAccepted: "image" | "video";
+  fileTypeAccepted: SupportedFileType;
 }
 
-export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
+function deriveFileName(key?: string) {
+  if (!key) return undefined;
+  const parts = key.split("/");
+  return parts[parts.length - 1] || key;
+}
+
+export function Uploader({ onChange, value, fileTypeAccepted }: UploaderProps) {
   const fileUrl = useConstructUrl(value || "");
+  const acceptMap: Record<SupportedFileType, Record<string, string[]>> = {
+    image: { "image/*": [] },
+    video: { "video/*": [] },
+    document: { "application/pdf": [] },
+    audio: {
+      "audio/mpeg": [],
+      "audio/wav": [],
+      "audio/mp4": [],
+      "audio/aac": [],
+      "audio/*": [],
+    },
+  };
+  const maxSizeMap: Record<SupportedFileType, number> = {
+    image: 5 * 1024 * 1024,
+    video: 5000 * 1024 * 1024,
+    document: 25 * 1024 * 1024,
+    audio: 30 * 1024 * 1024,
+  };
   const [fileState, setFileState] = useState<UploaderState>({
     error: false,
     file: null,
@@ -44,6 +71,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
     fileType: fileTypeAccepted,
     key: value,
     objectUrl: value ? fileUrl : undefined,
+    fileName: deriveFileName(value),
   });
 
   const uploadFile = useCallback(
@@ -136,6 +164,16 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
     [fileTypeAccepted, onChange]
   );
 
+  useEffect(() => {
+    setFileState((prev) => ({
+      ...prev,
+      fileType: fileTypeAccepted,
+      key: value,
+      objectUrl: value ? fileUrl : undefined,
+      fileName: deriveFileName(value) ?? prev.fileName,
+    }));
+  }, [fileTypeAccepted, value, fileUrl]);
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
@@ -153,6 +191,8 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
           id: uuidv4(),
           isDeleting: false,
           fileType: fileTypeAccepted,
+          fileName: file.name,
+          key: undefined,
         });
 
         uploadFile(file);
@@ -205,6 +245,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
         fileType: fileTypeAccepted,
         id: null,
         isDeleting: false,
+        fileName: undefined,
       }));
 
       toast.success("File removed successfully");
@@ -253,6 +294,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
       fileType: fileTypeAccepted,
       id: null,
       isDeleting: false,
+      fileName: undefined,
       key: undefined,
     });
   }
@@ -278,6 +320,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
           previewUrl={fileState.objectUrl}
           isDeleting={fileState.isDeleting}
           fileType={fileState.fileType}
+          fileName={fileState.file?.name || fileState.fileName || fileState.key}
         />
       );
     }
@@ -295,12 +338,10 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept:
-      fileTypeAccepted === "video" ? { "video/*": [] } : { "image/*": [] },
+    accept: acceptMap[fileTypeAccepted],
     maxFiles: 1,
     multiple: false,
-    maxSize:
-      fileTypeAccepted === "image" ? 5 * 1024 * 1024 : 5000 * 1024 * 1024,
+    maxSize: maxSizeMap[fileTypeAccepted],
     onDropRejected: rejectedFiles,
     disabled:
       fileState.uploading || (!!fileState.objectUrl && !fileState.error),

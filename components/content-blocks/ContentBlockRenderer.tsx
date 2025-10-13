@@ -12,6 +12,9 @@ import { OrderingBlockRenderer } from "./renderers/OrderingBlockRenderer";
 import { DragDropBlockRenderer } from "./renderers/DragDropBlockRenderer";
 import { TimelineBlockRenderer } from "./renderers/TimelineBlockRenderer";
 import { CodeBlockRenderer } from "./renderers/CodeBlockRenderer";
+import { PdfBlockRenderer } from "./renderers/PdfBlockRenderer";
+import { AudioBlockRenderer } from "./renderers/AudioBlockRenderer";
+import { ExerciseBlockRenderer } from "./renderers/ExerciseBlockRenderer";
 
 interface ContentBlockData {
   id: string;
@@ -65,6 +68,14 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
             lessonId={lessonId}
           />
         );
+      case ContentBlockType.EXERCISE:
+        return (
+          <ExerciseBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
+          />
+        );
       case ContentBlockType.FILL_IN_BLANK:
         return (
           <FillInBlankBlockRenderer
@@ -116,6 +127,22 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
             content={block.content}
             blockId={block.id}
             lessonId={lessonId}
+          />
+        );
+      case ContentBlockType.PDF:
+        return (
+          <PdfBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
+          />
+        );
+      case ContentBlockType.AUDIO:
+        return (
+          <AudioBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
           />
         );
       case ContentBlockType.CODE:
