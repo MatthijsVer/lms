@@ -15,6 +15,7 @@ import { CodeBlockRenderer } from "./renderers/CodeBlockRenderer";
 import { PdfBlockRenderer } from "./renderers/PdfBlockRenderer";
 import { AudioBlockRenderer } from "./renderers/AudioBlockRenderer";
 import { ExerciseBlockRenderer } from "./renderers/ExerciseBlockRenderer";
+import { CodeExerciseBlockRenderer } from "./renderers/CodeExerciseBlockRenderer";
 
 interface ContentBlockData {
   id: string;
@@ -132,6 +133,14 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
       case ContentBlockType.PDF:
         return (
           <PdfBlockRenderer
+            key={block.id}
+            content={block.content}
+            blockId={block.id}
+          />
+        );
+      case ContentBlockType.CODE_EXERCISE:
+        return (
+          <CodeExerciseBlockRenderer
             key={block.id}
             content={block.content}
             blockId={block.id}

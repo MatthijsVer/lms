@@ -6,6 +6,7 @@ export enum ContentBlockType {
   QUIZ = "QUIZ",
   EXERCISE = "EXERCISE",
   CODE = "CODE",
+  CODE_EXERCISE = "CODE_EXERCISE",
   PDF = "PDF",
   AUDIO = "AUDIO",
   DOWNLOAD = "DOWNLOAD",
@@ -68,6 +69,17 @@ export interface CodeContent {
   language: string;
   title?: string;
   runnable?: boolean;
+}
+
+export interface CodeExerciseContent {
+  title?: string;
+  prompt: string;
+  starterCode: string;
+  solution?: string;
+  tests: {
+    description: string;
+    code: string;
+  }[];
 }
 
 export interface PdfContent {
@@ -216,6 +228,7 @@ export type ContentBlock = BaseContentBlock & (
   | { type: ContentBlockType.QUIZ; content: QuizContent }
   | { type: ContentBlockType.EXERCISE; content: ExerciseContent }
   | { type: ContentBlockType.CODE; content: CodeContent }
+  | { type: ContentBlockType.CODE_EXERCISE; content: CodeExerciseContent }
   | { type: ContentBlockType.PDF; content: PdfContent }
   | { type: ContentBlockType.AUDIO; content: AudioContent }
   | { type: ContentBlockType.DOWNLOAD; content: DownloadContent }
@@ -258,6 +271,14 @@ export const createContentBlock = {
     type: ContentBlockType.CODE,
     position,
     content
+  }),
+  codeExercise: (
+    content: CodeExerciseContent,
+    position: number
+  ): ContentBlock => ({
+    type: ContentBlockType.CODE_EXERCISE,
+    position,
+    content,
   }),
   pdf: (content: PdfContent, position: number): ContentBlock => ({
     type: ContentBlockType.PDF,

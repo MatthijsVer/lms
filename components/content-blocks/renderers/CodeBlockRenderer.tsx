@@ -133,7 +133,9 @@ export function CodeBlockRenderer({
     }
   }, [runnerOutput]);
 
+  const codeString = content.code ?? "";
   const rawLanguage = content.language?.trim();
+
   const resolvedLanguage = useMemo(
     () => resolveLanguage(rawLanguage),
     [rawLanguage]
@@ -143,7 +145,7 @@ export function CodeBlockRenderer({
   const canRun = isRunnable && runnableLanguages.has(resolvedLanguage);
 
   useEffect(() => {
-    if (!content.code) {
+    if (!codeString) {
       return;
     }
 
@@ -182,7 +184,7 @@ export function CodeBlockRenderer({
       }
 
       try {
-        const html = highlighter.codeToHtml(content.code ?? "", {
+        const html = highlighter.codeToHtml(codeString, {
           lang: resolvedLanguage,
           theme,
         });
@@ -204,7 +206,7 @@ export function CodeBlockRenderer({
     return () => {
       cancelled = true;
     };
-  }, [content.code, resolvedLanguage, theme]);
+  }, [codeString, resolvedLanguage, theme]);
 
   const runnerHtml = useMemo(() => {
     if (!canRun) return "";
@@ -280,7 +282,7 @@ export function CodeBlockRenderer({
       (async () => {
         const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
         try {
-          const userCode = ${JSON.stringify(content.code ?? "")};
+          const userCode = ${JSON.stringify(codeString)};
           const runner = new AsyncFunction(userCode);
           const result = await runner();
           if (typeof result !== "undefined") {
@@ -295,7 +297,7 @@ export function CodeBlockRenderer({
     </script>
   </body>
 </html>`;
-  }, [canRun, runToken, content.code]);
+  }, [canRun, runToken, codeString]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -352,14 +354,11 @@ export function CodeBlockRenderer({
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  if (!content.code) {
-    return null;
-  }
 
   const handleCopy = async () => {
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(content.code);
+        await navigator.clipboard.writeText(codeString);
         setCopied(true);
         copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
       }
@@ -504,7 +503,7 @@ export function CodeBlockRenderer({
             id={`code-block-${blockId}`}
             data-language={resolvedLanguage}
           >
-            <code className="block text-muted-foreground">{content.code}</code>
+            <code className="block text-muted-foreground">{codeString}</code>
           </pre>
         )}
       </div>

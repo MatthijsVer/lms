@@ -172,6 +172,7 @@ enum ContentBlockType {
   IMAGE
   QUIZ
   EXERCISE
+  CODE_EXERCISE
   CODE
   PDF
   AUDIO

@@ -30,6 +30,7 @@ import {
   Move,
   MapPin,
   ClipboardCheck,
+  SquareCode,
 } from "lucide-react";
 import { useState } from "react";
 import { VideoBlockEditor } from "./editors/VideoBlockEditor";
@@ -46,6 +47,7 @@ import { CodeBlockEditor } from "./editors/CodeBlockEditor";
 import { PdfBlockEditor } from "./editors/PdfBlockEditor";
 import { AudioBlockEditor } from "./editors/AudioBlockEditor";
 import { ExerciseBlockEditor } from "./editors/ExerciseBlockEditor";
+import { CodeExerciseBlockEditor } from "./editors/CodeExerciseBlockEditor";
 
 interface ContentBlockEditorProps {
   blocks: ContentBlock[];
@@ -58,6 +60,7 @@ const blockIcons = {
   [ContentBlockType.IMAGE]: Image,
   [ContentBlockType.QUIZ]: HelpCircle,
   [ContentBlockType.EXERCISE]: ClipboardCheck,
+  [ContentBlockType.CODE_EXERCISE]: SquareCode,
   [ContentBlockType.CODE]: Code,
   [ContentBlockType.PDF]: FileDown,
   [ContentBlockType.AUDIO]: Music,
@@ -76,6 +79,7 @@ const blockLabels = {
   [ContentBlockType.IMAGE]: "Image",
   [ContentBlockType.QUIZ]: "Quiz",
   [ContentBlockType.EXERCISE]: "Exercise",
+  [ContentBlockType.CODE_EXERCISE]: "Code Exercise",
   [ContentBlockType.CODE]: "Code",
   [ContentBlockType.PDF]: "PDF",
   [ContentBlockType.AUDIO]: "Audio",
@@ -255,6 +259,13 @@ export function ContentBlockEditor({
             onChange={(b) => updateBlock(index, b)}
           />
         );
+      case ContentBlockType.CODE_EXERCISE:
+        return (
+          <CodeExerciseBlockEditor
+            block={block}
+            onChange={(b) => updateBlock(index, b)}
+          />
+        );
       default:
         return (
           <div className="text-muted-foreground">
@@ -346,6 +357,10 @@ export function ContentBlockEditor({
             <HelpCircle className="h-4 w-4 mr-2" />
             Quiz
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => addBlock(ContentBlockType.CODE_EXERCISE)}>
+            <SquareCode className="h-4 w-4 mr-2" />
+            Code Exercise
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock(ContentBlockType.EXERCISE)}>
             <ClipboardCheck className="h-4 w-4 mr-2" />
             Exercise
@@ -428,6 +443,29 @@ function getDefaultContent(type: ContentBlockType): any {
         instructions: "",
         expectedOutput: "",
         hints: [],
+      };
+    case ContentBlockType.CODE_EXERCISE:
+      return {
+        title: "Implement add(a, b)",
+        prompt: "Write a function `add(a, b)` that returns the numeric sum of both arguments.",
+        starterCode: `function add(a, b) {
+  // TODO: return the sum of a and b
+}
+`,
+        solution: `function add(a, b) {
+  return a + b;
+}
+`,
+        tests: [
+          {
+            description: "adds two positive numbers",
+            code: "assert(add(2, 2) === 4, 'add(2, 2) should equal 4');",
+          },
+          {
+            description: "handles negative numbers",
+            code: "assert(add(-3, 5) === 2, 'add(-3, 5) should equal 2');",
+          },
+        ],
       };
     case ContentBlockType.CODE:
       return { code: "", language: "javascript" };
