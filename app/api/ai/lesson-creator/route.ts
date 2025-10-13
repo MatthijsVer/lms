@@ -10,11 +10,25 @@ const openai = new OpenAI({
 // Schema for the lesson structure based on your Prisma schema
 const ContentBlockSchema = z.object({
   type: z.enum([
-    'VIDEO', 'TEXT', 'IMAGE', 'QUIZ', 'EXERCISE', 
-    'CODE', 'PDF', 'AUDIO', 'DOWNLOAD', 'FILL_IN_BLANK', 'FLASHCARD'
+    'VIDEO',
+    'TEXT',
+    'IMAGE',
+    'QUIZ',
+    'EXERCISE',
+    'CODE',
+    'CODE_EXERCISE',
+    'PDF',
+    'AUDIO',
+    'DOWNLOAD',
+    'FILL_IN_BLANK',
+    'FLASHCARD',
+    'MATCHING',
+    'ORDERING',
+    'DRAG_DROP',
+    'TIMELINE',
   ]),
   position: z.number(),
-  content: z.record(z.any()) // JSON content specific to each type
+  content: z.record(z.any()), // JSON content specific to each type
 });
 
 const LessonSchema = z.object({
@@ -31,16 +45,6 @@ const ChapterSchema = z.object({
   lessons: z.array(LessonSchema)
 });
 
-const CourseStructureSchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  smallDescription: z.string(),
-  level: z.enum(['Beginner', 'Intermediate', 'Advanced']),
-  duration: z.number(), // in minutes
-  category: z.string(),
-  chapters: z.array(ChapterSchema)
-});
-
 // System prompt for the AI
 const SYSTEM_PROMPT = `You are an expert educational content creator. Your role is to have a conversation with the user to gather information about the lesson they want to create, and then generate a complete lesson structure in JSON format.
 
@@ -55,7 +59,23 @@ Your conversation should:
    - Any specific requirements
 
 After gathering enough information, generate a complete lesson structure following this schema:
-- Use various content block types (TEXT, QUIZ, FILL_IN_BLANK, EXERCISE, etc.)
+- Use the appropriate content block types. Available types and their expected content keys are:
+  * TEXT – { title?, text, format? ('markdown'|'html'|'plain') }
+  * IMAGE – { imageKey, alt?, caption? }
+  * VIDEO – { videoKey?, videoUrl?, title?, description?, duration?, thumbnailKey? }
+  * AUDIO – { audioKey, title?, description?, transcript?, shouldShowTranscript? }
+  * PDF – { pdfKey, title, description?, downloadable? }
+  * DOWNLOAD – { fileKey, fileName, fileSize?, description? }
+  * QUIZ – { question, options[{id,text,isCorrect}], explanation?, points?, allowMultipleAttempts?, showCorrectAnswer?, randomizeOptions? }
+  * FILL_IN_BLANK – { text, instructions?, blanks[{id,correctAnswers[],caseSensitive?,allowPartialCredit?,hint?}], points?, showHints? }
+  * FLASHCARD – { title?, instructions?, cards[{id,front,back,hint?}], shuffleCards?, showProgress?, allowFlip? }
+  * MATCHING – { title?, instructions?, pairs[{id,leftItem,rightItem,explanation?}], shuffleItems?, showFeedback?, allowHints?, points?, timeLimit? }
+  * ORDERING – { title?, instructions?, items[{id,text,correctPosition,explanation?,hint?}], shuffleItems?, showPositionNumbers?, allowPartialCredit?, showFeedback?, allowHints?, points?, timeLimit? }
+  * DRAG_DROP – { title?, instructions?, tokens[{id,text,correctTargets[],hint?}], targets[{id,label,description?,maxItems?,acceptsMultiple?}], shuffleTokens?, showTargetLabels?, allowPartialCredit?, showFeedback?, allowHints?, returnToBank?, points?, timeLimit? }
+  * TIMELINE – { title?, instructions?, events[{id,title,description?,date,time?,type?,icon?,color?,metadata?}], layout?, showDates?, showTimes?, chronological?, interactive?, allowNavigation?, showProgress?, allowPartialCredit?, shuffleEvents?, allowHints?, points? }
+  * EXERCISE – { title?, instructions, expectedOutput?, hints[], points? }
+  * CODE – { code, language, title?, runnable? }
+  * CODE_EXERCISE – { title?, prompt, starterCode, solution?, tests[{description,code}] } — tests should use an \`assert(condition, message?)\` helper; learners run them in-browser.
 - Create engaging and educational content
 - Ensure quizzes have proper structure with correct/incorrect answers
 - For FILL_IN_BLANK, create meaningful sentences with appropriate blanks
@@ -114,9 +134,31 @@ The JSON should follow this structure:
         "points": 5,
         "showHints": true
       }
+    },
+    {
+      "type": "CODE_EXERCISE",
+      "position": 4,
+      "content": {
+        "title": "Implement add(a, b)",
+        "prompt": "Write a function add(a, b) that returns the numeric sum of both arguments.",
+        "starterCode": "function add(a, b) {\n  // TODO: return the sum of a and b\n}\n",
+        "solution": "function add(a, b) {\n  return a + b;\n}\n",
+        "tests": [
+          {
+            "description": "adds two positive numbers",
+            "code": "assert(add(2, 2) === 4, 'add(2, 2) should equal 4');"
+          },
+          {
+            "description": "handles negative numbers",
+            "code": "assert(add(-3, 5) === 2, 'add(-3, 5) should equal 2');"
+          }
+        ]
+      }
     }
   ]
-}`;
+}
+
+For code exercises include clear instructions, starter code, and at least one automated test using \`assert\`.`;
 
 export async function POST(request: NextRequest) {
   try {
