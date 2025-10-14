@@ -52,7 +52,7 @@ export function UserDropdown({ email, name, image }: iAppProps) {
             {name}
           </span>
           <span className="text-muted-foreground truncate text-xs font-normal">
-            john@john.com
+            {email}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

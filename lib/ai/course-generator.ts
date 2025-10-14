@@ -51,37 +51,6 @@ When the user confirms they want the lesson generated, respond with:
 1. A confirmation message
 2. A JSON code block with the complete lesson structure`.trim();
 
-const VIDEO_PROMPT = `You are given source material derived from a course video. Create a complete course as JSON following this format:
-{
-  "title": "...",
-  "smallDescription": "...",
-  "description": "...",
-  "level": "Beginner|Intermediate|Advanced",
-  "duration": number (hours),
-  "price": number (USD),
-  "category": "...",
-  "status": "Draft",
-  "chapters": [
-    {
-      "title": "...",
-      "overview": "...",
-      "position": 1,
-      "lessons": [
-        {
-          "title": "...",
-          "description": "...",
-          "position": 1,
-          "contentBlocks": [ ... blocks defined in the schema above ... ]
-        }
-      ]
-    }
-  ]
-}
-
-Use the transcript to derive learning objectives, lesson outlines, and engaging content blocks.`.trim();
-
-const DOCUMENT_PROMPT = `You are given course source material from a document. Summarise it into a complete online course JSON using the same schema. Extract key sections to form chapters and lessons, mixing appropriate content block types for engagement.`.trim();
-
 type ChatMessage = {
   role: "assistant" | "user" | "system";
   content: string;
@@ -99,6 +68,132 @@ function parseCourseJson(message: string): AiCourseStructure | null {
     console.error("Failed to parse AI course JSON:", error);
     return null;
   }
+}
+
+function parseChapterJson(message: string): AiChapter | null {
+  const match = message.match(JSON_REGEX);
+  if (!match) return null;
+
+  try {
+    const parsed = JSON.parse(match[1]);
+    const chapterData = parsed.chapter ?? parsed;
+    return AiChapterSchema.parse(chapterData);
+  } catch (error) {
+    console.error("Failed to parse AI chapter JSON:", error);
+    return null;
+  }
+}
+
+type CourseMetadata = {
+  title: string;
+  smallDescription: string;
+  description: string;
+  level: "Beginner" | "Intermediate" | "Advanced";
+  duration: number;
+  price: number;
+  category: string;
+  status?: "Draft" | "Published" | "Archived";
+};
+
+async function generateCourseMetadata(text: string): Promise<CourseMetadata> {
+  const defaults: CourseMetadata = {
+    title: "AI Generated Course",
+    smallDescription: "Auto-generated course outline.",
+    description:
+      "This course outline was generated from source materials. Review and edit before publishing.",
+    level: "Intermediate",
+    duration: 6,
+    price: 0,
+    category: "General",
+    status: "Draft",
+  };
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are preparing metadata for an online course. Read the notes provided and respond with a JSON code block containing the following keys:\n{\n  "title": string,\n  "smallDescription": string,\n  "description": string,\n  "level": "Beginner" | "Intermediate" | "Advanced",\n  "duration": number (in hours, 1-40),\n  "price": number (USD, 0-200),\n  "category": string,\n  "status": "Draft"\n}\nKeep descriptions concise and user-friendly.`,
+        },
+        {
+          role: "user",
+          content: text.slice(0, 6000),
+        },
+      ],
+      temperature: 0.4,
+      max_tokens: 800,
+    });
+
+    const content = completion.choices[0].message.content ?? "";
+    const match = content.match(JSON_REGEX);
+    const jsonString = match ? match[1] : content;
+
+    const parsed = JSON.parse(jsonString);
+    return {
+      title: parsed.title ?? defaults.title,
+      smallDescription: parsed.smallDescription ?? defaults.smallDescription,
+      description: parsed.description ?? defaults.description,
+      level: ["Beginner", "Intermediate", "Advanced"].includes(parsed.level)
+        ? parsed.level
+        : defaults.level,
+      duration:
+        typeof parsed.duration === "number" && parsed.duration > 0
+          ? Math.min(40, Math.max(1, parsed.duration))
+          : defaults.duration,
+      price:
+        typeof parsed.price === "number" && parsed.price >= 0
+          ? Math.min(200, parsed.price)
+          : defaults.price,
+      category: parsed.category ?? defaults.category,
+      status: "Draft",
+    };
+  } catch (error) {
+    console.error("Failed to generate course metadata:", error);
+    return defaults;
+  }
+}
+
+async function generateChapterFromChunk(
+  chunk: string,
+  chapterNumber: number,
+  courseTitle: string
+): Promise<AiChapter | null> {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are helping design chapter #${chapterNumber} for the course "${courseTitle}". Using only the excerpt provided, create a JSON code block that matches this schema:\n{\n  "chapter": {\n    "title": string,\n    "overview": string,\n    "position": number,\n    "lessons": [\n      {\n        "title": string,\n        "description": string,\n        "position": number,\n        "contentBlocks": [\n          {\n            "type": "VIDEO" | "TEXT" | "IMAGE" | "QUIZ" | "EXERCISE" | "CODE" | "CODE_EXERCISE" | "PDF" | "AUDIO" | "DOWNLOAD" | "FILL_IN_BLANK" | "FLASHCARD" | "MATCHING" | "ORDERING" | "DRAG_DROP" | "TIMELINE",\n            "position": number,\n            "content": object\n          }\n        ]\n      }\n    ]\n  }\n}\nGuidelines: derive titles and descriptions from the excerpt, include 1-3 lessons, each with 2-4 relevant content blocks. Make sure contentBlocks have structured objects (e.g. TEXT blocks should include { "title": string, "text": string, "format": "markdown" }). Do not invent unrelated material.`,
+      },
+      {
+        role: "user",
+        content: `Excerpt:\n"""\n${chunk}\n"""`,
+      },
+    ],
+    temperature: 0.5,
+    max_tokens: 1200,
+  });
+
+  const content = completion.choices[0].message.content ?? "";
+  const chapter = parseChapterJson(content);
+  if (!chapter) return null;
+
+  const normalisedLessons = chapter.lessons.map((lesson, lessonIdx) => ({
+    ...lesson,
+    position: lesson.position ?? lessonIdx + 1,
+    contentBlocks: (lesson.contentBlocks ?? []).map((block, blockIdx) => ({
+      ...block,
+      position: block.position ?? blockIdx + 1,
+    })),
+  }));
+
+  return {
+    title: chapter.title,
+    overview: chapter.overview,
+    position: chapter.position ?? chapterNumber,
+    lessons: normalisedLessons,
+  };
 }
 
 export async function generateCourseFromChat(
@@ -139,31 +234,54 @@ export async function generateCourseFromSource(
   mode: "video" | "document",
   sourceText: string
 ) {
-  const systemPrompt =
-    mode === "video" ? VIDEO_PROMPT : DOCUMENT_PROMPT;
+  const summary = await summarizeLargeText(sourceText);
+  const metadata = await generateCourseMetadata(summary);
+  const chunks = chunkText(sourceText, 1800);
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4-turbo-preview",
-    messages: [
-      {
-        role: "system",
-        content: `${systemPrompt}\n\nRemember to include diverse content blocks and realistic durations/pricing.`,
-      },
-      {
-        role: "user",
-        content: `Source material:\n"""\n${sourceText}\n"""`,
-      },
-    ],
-    temperature: 0.6,
-    max_tokens: 3500,
+  const chapters: AiChapter[] = [];
+  for (let index = 0; index < chunks.length; index += 1) {
+    const chunk = chunks[index];
+    const outline = await generateChapterFromChunk(chunk, index + 1, metadata.title);
+    if (outline) {
+      chapters.push(outline);
+    }
+  }
+
+  if (chapters.length === 0) {
+    chapters.push({
+      title: "Introduction",
+      overview: metadata.smallDescription,
+      lessons: [
+        {
+          title: metadata.title,
+          description: metadata.description,
+          position: 1,
+          contentBlocks: [
+            {
+              type: "TEXT",
+              position: 1,
+              content: {
+                title: "Overview",
+                text: metadata.description,
+                format: "markdown",
+              },
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  const course = sanitiseCourseStructure({
+    ...metadata,
+    chapters,
   });
 
-  const assistantContent = completion.choices[0].message.content ?? "";
-  const courseJson = parseCourseJson(assistantContent);
+  const message = `Generated course "${course.title}" with ${course.chapters.length} chapter${course.chapters.length === 1 ? "" : "s"} from the ${mode} source.`;
 
   return {
-    message: assistantContent,
-    courseJson,
+    message,
+    courseJson: course,
     role: "assistant" as const,
   };
 }
@@ -191,7 +309,7 @@ function chunkText(text: string, maxLength = 4000) {
 }
 
 export async function summarizeLargeText(text: string) {
-  const chunks = chunkText(text);
+  const chunks = chunkText(text, 2000);
   if (chunks.length === 1) return chunks[0];
 
   const summaries: string[] = [];
@@ -262,6 +380,9 @@ function sanitiseCourseStructure(raw: any) {
   if (!course.category || typeof course.category !== "string") {
     course.category = "General";
   }
+  if (course.status !== "Published" && course.status !== "Archived") {
+    course.status = "Draft";
+  }
 
   course.chapters = Array.isArray(course.chapters) ? course.chapters : [];
 
@@ -271,6 +392,8 @@ function sanitiseCourseStructure(raw: any) {
       typeof safeChapter.position === "number"
         ? safeChapter.position
         : chapterIdx + 1;
+    safeChapter.overview =
+      typeof safeChapter.overview === "string" ? safeChapter.overview : "";
     safeChapter.lessons = Array.isArray(safeChapter.lessons)
       ? safeChapter.lessons
       : [];
@@ -282,6 +405,10 @@ function sanitiseCourseStructure(raw: any) {
           typeof safeLesson.position === "number"
             ? safeLesson.position
             : lessonIdx + 1;
+        safeLesson.description =
+          typeof safeLesson.description === "string"
+            ? safeLesson.description
+            : "";
         safeLesson.contentBlocks = Array.isArray(safeLesson.contentBlocks)
           ? safeLesson.contentBlocks
           : [];
@@ -326,13 +453,13 @@ function sanitiseBlock(block: any, index: number) {
   let content = block.content;
   if (typeof content === "string") {
     if (type === "TEXT" || type === "FLASHCARD") {
-      content = { text: content };
+      content = { title: "", text: content, format: "markdown" };
     } else if (type === "VIDEO") {
-      content = { description: content };
+      content = { title: "Video", description: content };
     } else if (type === "PDF" || type === "DOWNLOAD") {
-      content = { description: content, title: "Generated content" };
+      content = { title: "Resource", description: content, downloadable: true };
     } else if (type === "CODE" || type === "CODE_EXERCISE") {
-      content = { code: content, language: "javascript" };
+      content = { title: "Example", code: content, language: "javascript" };
     } else {
       content = { text: content };
     }
@@ -341,11 +468,45 @@ function sanitiseBlock(block: any, index: number) {
   if (!content || typeof content !== "object") {
     content = {};
   }
-
-  return {
+  const blockWithContent = {
     ...block,
     type,
     position,
     content,
   };
+
+  if (type === "TEXT") {
+    blockWithContent.content.title =
+      blockWithContent.content.title ?? "Text";
+    blockWithContent.content.text =
+      blockWithContent.content.text ?? "";
+    blockWithContent.content.format =
+      blockWithContent.content.format ?? "markdown";
+  }
+
+  if (type === "QUIZ") {
+    blockWithContent.content.question =
+      blockWithContent.content.question ?? "Quiz question";
+    blockWithContent.content.options = Array.isArray(blockWithContent.content.options)
+      ? blockWithContent.content.options
+      : [
+          { id: "1", text: "Option 1", isCorrect: true },
+          { id: "2", text: "Option 2", isCorrect: false },
+        ];
+    blockWithContent.content.explanation =
+      blockWithContent.content.explanation ?? "Explanation";
+    blockWithContent.content.points =
+      typeof blockWithContent.content.points === "number"
+        ? blockWithContent.content.points
+        : 5;
+  }
+
+  if (type === "CODE" || type === "CODE_EXERCISE") {
+    blockWithContent.content.language =
+      blockWithContent.content.language ?? "javascript";
+    blockWithContent.content.code =
+      blockWithContent.content.code ?? "";
+  }
+
+  return blockWithContent;
 }

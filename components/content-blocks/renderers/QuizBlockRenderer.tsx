@@ -4,9 +4,16 @@ import { QuizContent } from "@/lib/content-blocks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, HelpCircle, Trophy, Lightbulb } from "lucide-react";
-import { useState } from "react";
+import {
+  CheckCircle,
+  XCircle,
+  HelpCircle,
+  Trophy,
+  Lightbulb,
+} from "lucide-react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useLessonProgress } from "../LessonProgressContext";
 
 interface QuizBlockRendererProps {
   content: QuizContent;
@@ -14,18 +21,27 @@ interface QuizBlockRendererProps {
   lessonId: string;
 }
 
-export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRendererProps) {
+export function QuizBlockRenderer({
+  content,
+  blockId,
+  lessonId,
+}: QuizBlockRendererProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
 
+  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const isCompleted = isBlockCompleted(blockId);
+
   const handleAnswerSelect = (optionIndex: number) => {
     if (submitted) return;
 
-    if (content.allowMultipleCorrect) {
-      setSelectedAnswers(prev => 
+    const allowMultiple = content.options.filter((o) => o.isCorrect).length > 1;
+
+    if (allowMultiple) {
+      setSelectedAnswers((prev) =>
         prev.includes(optionIndex)
-          ? prev.filter(i => i !== optionIndex)
+          ? prev.filter((i) => i !== optionIndex)
           : [...prev, optionIndex]
       );
     } else {
@@ -36,6 +52,17 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
   const handleSubmit = () => {
     setSubmitted(true);
     setShowExplanation(true);
+
+    const correct = isCorrect();
+    const maxScore = content.points || 10;
+    const score = correct ? maxScore : 0;
+
+    // Update progress in context
+    updateBlockProgress(blockId, {
+      completed: correct,
+      score,
+      maxScore,
+    });
   };
 
   const handleRetry = () => {
@@ -47,27 +74,28 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
   const getCorrectAnswers = () => {
     return content.options
       .map((option, index) => ({ ...option, index }))
-      .filter(option => option.isCorrect)
-      .map(option => option.index);
+      .filter((option) => option.isCorrect)
+      .map((option) => option.index);
   };
 
   const isCorrect = () => {
     const correctAnswers = getCorrectAnswers();
     return (
       selectedAnswers.length === correctAnswers.length &&
-      selectedAnswers.every(answer => correctAnswers.includes(answer))
+      selectedAnswers.every((answer) => correctAnswers.includes(answer))
     );
   };
 
   const getOptionStatus = (optionIndex: number) => {
     if (!submitted) return "default";
-    
+
     const isSelected = selectedAnswers.includes(optionIndex);
     const isCorrectOption = content.options[optionIndex].isCorrect;
 
     if (isSelected && isCorrectOption) return "correct";
     if (isSelected && !isCorrectOption) return "incorrect";
-    if (!isSelected && isCorrectOption) return "missed";
+    if (!isSelected && isCorrectOption && content.showCorrectAnswer)
+      return "missed";
     return "default";
   };
 
@@ -86,7 +114,6 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
   };
 
   const canSubmit = selectedAnswers.length > 0;
-  const correctAnswers = getCorrectAnswers();
 
   return (
     <Card className="w-full">
@@ -95,18 +122,25 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
           <CardTitle className="text-lg flex items-center gap-2">
             <HelpCircle className="h-5 w-5" />
             Quiz Question
+            {isCompleted && (
+              <Badge variant="secondary" className="ml-2">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Completed
+              </Badge>
+            )}
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="gap-1">
               <Trophy className="h-3 w-3" />
-              {content.points} {content.points === 1 ? "point" : "points"}
+              {content.points || 10}{" "}
+              {(content.points || 10) === 1 ? "point" : "points"}
             </Badge>
           </div>
         </div>
         <p className="text-base text-foreground font-normal">
           {content.question}
         </p>
-        {content.allowMultipleCorrect && (
+        {content.options.filter((o) => o.isCorrect).length > 1 && (
           <p className="text-sm text-muted-foreground">
             Select all correct answers
           </p>
@@ -127,13 +161,13 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
                   "w-full p-4 text-left border rounded-lg transition-all",
                   "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary",
                   {
-                    "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800": 
+                    "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800":
                       isSelected && !submitted,
-                    "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800": 
+                    "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800":
                       status === "correct",
-                    "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800": 
+                    "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800":
                       status === "incorrect",
-                    "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800": 
+                    "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800":
                       status === "missed",
                     "cursor-not-allowed": submitted,
                   }
@@ -141,17 +175,20 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                      content.allowMultipleCorrect ? "rounded" : "rounded-full",
-                      {
-                        "border-blue-500 bg-blue-500": isSelected && !submitted,
-                        "border-green-500 bg-green-500": status === "correct",
-                        "border-red-500 bg-red-500": status === "incorrect",
-                        "border-yellow-500 bg-yellow-500": status === "missed",
-                        "border-muted-foreground": !isSelected && !submitted,
-                      }
-                    )}>
+                    <div
+                      className={cn(
+                        "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                        {
+                          "border-blue-500 bg-blue-500":
+                            isSelected && !submitted,
+                          "border-green-500 bg-green-500": status === "correct",
+                          "border-red-500 bg-red-500": status === "incorrect",
+                          "border-yellow-500 bg-yellow-500":
+                            status === "missed",
+                          "border-muted-foreground": !isSelected && !submitted,
+                        }
+                      )}
+                    >
                       {isSelected && !submitted && (
                         <div className="w-2 h-2 bg-white rounded-full" />
                       )}
@@ -167,8 +204,8 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
 
         <div className="flex items-center gap-2 pt-2">
           {!submitted ? (
-            <Button 
-              onClick={handleSubmit} 
+            <Button
+              onClick={handleSubmit}
               disabled={!canSubmit}
               className="ml-auto"
             >
@@ -176,7 +213,7 @@ export function QuizBlockRenderer({ content, blockId, lessonId }: QuizBlockRende
             </Button>
           ) : (
             <div className="flex items-center gap-2 ml-auto">
-              {content.allowMultipleAttempts && (
+              {content.allowMultipleAttempts && !isCompleted && (
                 <Button variant="outline" onClick={handleRetry}>
                   Try Again
                 </Button>

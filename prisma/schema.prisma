@@ -9,19 +9,19 @@ datasource db {
 }
 
 model User {
-  id             String           @id
-  name           String
-  email          String
-  emailVerified  Boolean
-  image          String?
-  createdAt      DateTime
-  updatedAt      DateTime
-  sessions       Session[]
-  accounts       Account[]
-  courses        Course[]
-  enrollment     Enrollment[]
-  lessonProgress LessonProgress[]
-  quizAttempts   QuizAttempt[]
+  id                   String                 @id
+  name                 String
+  email                String
+  emailVerified        Boolean
+  image                String?
+  createdAt            DateTime
+  updatedAt            DateTime
+  sessions             Session[]
+  accounts             Account[]
+  courses              Course[]
+  enrollment           Enrollment[]
+  lessonProgress       LessonProgress[]
+  quizAttempts         QuizAttempt[]
   contentBlockProgress ContentBlockProgress[]
 
   stripeCustomerId String? @unique
@@ -30,6 +30,12 @@ model User {
   banned     Boolean?
   banReason  String?
   banExpires DateTime?
+
+  gameProfile               UserGameProfile?
+  userBadges                UserBadge[]
+  xpTransactions            XPTransaction[]
+  leaderboardEntries        LeaderboardEntry[]
+  dailyChallengeCompletions DailyChallengeCompletion[]
 
   @@unique([email])
   @@map("user")
@@ -141,7 +147,7 @@ model Lesson {
   title        String
   description  String?
   thumbnailKey String?
-  videoKey     String?  // Keep for backward compatibility
+  videoKey     String? // Keep for backward compatibility
   position     Int
 
   createdAt DateTime @default(now())
@@ -226,11 +232,11 @@ model LessonProgress {
 model QuizAttempt {
   id String @id @default(uuid())
 
-  contentBlockId String // Reference to the quiz content block
-  selectedAnswers Json   // Array of selected option IDs
-  isCorrect      Boolean
-  score          Int     // Points earned
-  timeSpent      Int?    // Time spent in seconds
+  contentBlockId  String // Reference to the quiz content block
+  selectedAnswers Json // Array of selected option IDs
+  isCorrect       Boolean
+  score           Int // Points earned
+  timeSpent       Int? // Time spent in seconds
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -247,7 +253,7 @@ model ContentBlockProgress {
   contentBlockId String
   type           ContentBlockType
   completed      Boolean          @default(false)
-  
+
   // For quizzes: best score, attempts count, etc.
   metadata Json? // Flexible field for different progress types
 
@@ -258,4 +264,264 @@ model ContentBlockProgress {
   userId String
 
   @@unique([userId, contentBlockId])
+}
+
+// ==================== GAMIFICATION MODELS ====================
+
+model UserGameProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Points & Levels
+  totalXP       Int @default(0)
+  currentLevel  Int @default(1)
+  xpToNextLevel Int @default(100)
+
+  // Streaks
+  currentStreak    Int       @default(0)
+  longestStreak    Int       @default(0)
+  lastActivityDate DateTime?
+
+  // Statistics
+  totalCoursesCompleted Int @default(0)
+  totalLessonsCompleted Int @default(0)
+  totalQuizzesPassed    Int @default(0)
+  totalTimeSpentMinutes Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userBadges         UserBadge[]
+  xpTransactions     XPTransaction[]
+  leaderboardEntries LeaderboardEntry[]
+
+  @@map("user_game_profile")
+}
+
+model Badge {
+  id          String        @id @default(uuid())
+  name        String
+  description String
+  imageKey    String // S3 key for badge image
+  category    BadgeCategory
+
+  // Requirements
+  requirement BadgeRequirement
+  targetValue Int // e.g., "Complete 5 courses" -> targetValue = 5
+
+  // Reward
+  xpReward Int @default(0)
+
+  // Rarity & Display
+  rarity   BadgeRarity @default(Common)
+  isSecret Boolean     @default(false) // Hidden until earned
+  order    Int         @default(0) // Display order
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userBadges UserBadge[]
+
+  @@map("badge")
+}
+
+enum BadgeCategory {
+  COURSE_COMPLETION
+  LEARNING_STREAK
+  QUIZ_MASTER
+  EARLY_BIRD
+  NIGHT_OWL
+  SPEED_LEARNER
+  PERFECTIONIST
+  SOCIAL
+  MILESTONE
+  SPECIAL
+}
+
+enum BadgeRequirement {
+  COMPLETE_COURSES // Complete X courses
+  COMPLETE_LESSONS // Complete X lessons
+  MAINTAIN_STREAK // Maintain X day streak
+  PASS_QUIZZES // Pass X quizzes
+  PERFECT_QUIZ_SCORE // Get 100% on X quizzes
+  REACH_XP // Reach X total XP
+  REACH_LEVEL // Reach level X
+  COMPLETE_COURSE_CATEGORY // Complete X courses in a category
+  LEARN_EARLY_MORNING // Complete X lessons before 9 AM
+  LEARN_LATE_NIGHT // Complete X lessons after 10 PM
+  FAST_COMPLETION // Complete a course within X days
+  COMMENT_COUNT // Make X comments (future feature)
+  HELP_OTHERS // Help X other students (future feature)
+}
+
+enum BadgeRarity {
+  Common
+  Uncommon
+  Rare
+  Epic
+  Legendary
+}
+
+model UserBadge {
+  id      String @id @default(uuid())
+  userId  String
+  badgeId String
+
+  earnedAt DateTime @default(now())
+  progress Int      @default(0) // Current progress towards badge (if not earned yet)
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade, map: "user_badge_user_fkey")
+  badge   Badge           @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  profile UserGameProfile @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "user_badge_profile_fkey")
+
+  @@unique([userId, badgeId])
+  @@map("user_badge")
+}
+
+model XPTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  amount      Int // Can be positive or negative
+  reason      XPReason
+  description String?
+
+  // Context
+  referenceId   String? // ID of related entity (courseId, lessonId, etc.)
+  referenceType String? // Type of entity (course, lesson, quiz, badge, etc.)
+
+  createdAt DateTime @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade, map: "xp_transaction_user_fkey")
+  profile UserGameProfile @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "xp_transaction_profile_fkey")
+
+  @@index([userId, createdAt])
+  @@map("xp_transaction")
+}
+
+enum XPReason {
+  LESSON_COMPLETED
+  QUIZ_PASSED
+  QUIZ_PERFECT_SCORE
+  COURSE_COMPLETED
+  STREAK_MILESTONE
+  BADGE_EARNED
+  DAILY_LOGIN
+  FIRST_LESSON_OF_DAY
+  SPEED_BONUS
+  PERFECT_CHAPTER
+  MANUAL_ADJUSTMENT
+}
+
+model Leaderboard {
+  id          String               @id @default(uuid())
+  name        String
+  description String?
+  type        LeaderboardType
+  timeframe   LeaderboardTimeframe
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries LeaderboardEntry[]
+
+  @@map("leaderboard")
+}
+
+enum LeaderboardType {
+  XP_TOTAL
+  XP_WEEKLY
+  XP_MONTHLY
+  COURSES_COMPLETED
+  STREAK_LENGTH
+  QUIZZES_PASSED
+  COURSE_CATEGORY // Category-specific leaderboard
+}
+
+enum LeaderboardTimeframe {
+  ALL_TIME
+  MONTHLY
+  WEEKLY
+  DAILY
+  CUSTOM
+}
+
+model LeaderboardEntry {
+  id            String @id @default(uuid())
+  leaderboardId String
+  userId        String
+
+  score Int // XP, streak count, course count, etc.
+  rank  Int
+
+  // Snapshot data (for historical leaderboards)
+  userName  String
+  userImage String?
+
+  calculatedAt DateTime @default(now())
+
+  leaderboard Leaderboard     @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade, map: "leaderboard_entry_user_fkey")
+  profile     UserGameProfile @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "leaderboard_entry_profile_fkey")
+
+  @@unique([leaderboardId, userId])
+  @@index([leaderboardId, rank])
+  @@map("leaderboard_entry")
+}
+
+model DailyChallenge {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        DateTime @db.Date
+
+  // Challenge requirements
+  challengeType ChallengeType
+  targetValue   Int // e.g., "Complete 3 lessons"
+  xpReward      Int
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  completions DailyChallengeCompletion[]
+
+  @@unique([date])
+  @@map("daily_challenge")
+}
+
+enum ChallengeType {
+  COMPLETE_LESSONS
+  PASS_QUIZZES
+  SPEND_TIME_LEARNING
+  ACHIEVE_PERFECT_SCORE
+  COMPLETE_CHAPTER
+}
+
+model DailyChallengeCompletion {
+  id          String @id @default(uuid())
+  userId      String
+  challengeId String
+
+  progress    Int       @default(0)
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  xpEarned    Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@map("daily_challenge_completion")
 }

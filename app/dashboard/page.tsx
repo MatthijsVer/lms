@@ -43,7 +43,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {courses.filter(
+        {/* {courses.filter(
           (course) =>
             !enrolledCourses.some(
               ({ Course: enrolled }) => enrolled.id === course.id
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
             href="/courses"
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {courses
               .filter(
                 (course) =>
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
                 <PublicCourseCard key={course.id} data={course} />
               ))}
           </div>
-        )}
+        )} */}
       </section>
     </div>
   );

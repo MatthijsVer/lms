@@ -19,7 +19,7 @@ export const AiContentBlockSchema = z.object({
     "DRAG_DROP",
     "TIMELINE",
   ]),
-  position: z.number(),
+  position: z.number().optional(),
   content: z.record(z.any()),
 });
 
@@ -28,14 +28,14 @@ export const AiLessonSchema = z.object({
   description: z.string().optional(),
   thumbnailKey: z.string().optional(),
   videoKey: z.string().optional(),
-  position: z.number(),
+  position: z.number().optional(),
   contentBlocks: z.array(AiContentBlockSchema).optional(),
 });
 
 export const AiChapterSchema = z.object({
   title: z.string(),
   overview: z.string().optional(),
-  position: z.number(),
+  position: z.number().optional(),
   lessons: z.array(AiLessonSchema),
 });
 

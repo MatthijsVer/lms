@@ -92,10 +92,11 @@ export async function createCourseFromAi(
         });
 
         for (const [lessonIdx, lesson] of chapter.lessons.entries()) {
+          const lessonDescription = toRichText(lesson.description ?? "");
           const lessonRecord = await tx.lesson.create({
             data: {
               title: lesson.title,
-              description: lesson.description ?? "",
+              description: lessonDescription,
               thumbnailKey: lesson.thumbnailKey,
               videoKey: lesson.videoKey,
               chapterId: chapterRecord.id,

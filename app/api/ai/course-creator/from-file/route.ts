@@ -1,11 +1,7 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
-import {
-  generateCourseFromSource,
-  summarizeLargeText,
-  openai,
-} from "@/lib/ai/course-generator";
+import { generateCourseFromSource, openai } from "@/lib/ai/course-generator";
 
 type SupportedMode = "video" | "document";
 
@@ -13,14 +9,14 @@ function readTextFile(file: File) {
   return file.text();
 }
 
-async function summarizeDocumentWithOpenAI(file: File, notes: string) {
+async function extractDocumentNotesWithOpenAI(file: File, notes: string) {
   const uploaded = await openai.files.create({
     file,
     purpose: "assistants",
   });
 
   const prompt =
-    "Summarize the attached document into concise bullet points highlighting chapters, lesson ideas, prerequisites, and learner outcomes." +
+    "Extract detailed notes from the attached document to help build an online course. Organise the output into labelled sections with headings, bullet points, and key concepts that the course should cover." +
     (notes.trim().length ? ` Additional context: ${notes.trim()}` : "");
 
   const response = await openai.responses.create({
@@ -92,33 +88,32 @@ export async function POST(request: NextRequest) {
     }
 
     let condensed = "";
+    let workingText = "";
     if (mode === "document") {
       if (file.type.startsWith("text/") || file.name.endsWith(".txt")) {
-        const text = await readTextFile(file);
-        const combined = notes.trim().length
-          ? `${text}\n\nAdditional context from course creator:\n${notes.trim()}`
-          : text;
-        condensed = await summarizeLargeText(combined);
+        workingText = await readTextFile(file);
       } else {
-        condensed = await summarizeDocumentWithOpenAI(file, notes);
+        workingText = await extractDocumentNotesWithOpenAI(file, notes);
       }
     } else {
-      const transcript = await transcribeMedia(file);
-      const combined = notes.trim().length
-        ? `${transcript}\n\nAdditional context from course creator:\n${notes.trim()}`
-        : transcript;
-      condensed = await summarizeLargeText(combined);
+      workingText = await transcribeMedia(file);
     }
 
-    if (!condensed.trim()) {
+    workingText = workingText.trim();
+
+    if (notes.trim().length > 0) {
+      workingText += `\n\nAdditional context from course creator:\n${notes.trim()}`;
+    }
+
+    if (!workingText) {
       return NextResponse.json(
-        { error: "Unable to summarise the provided content." },
+        { error: "Unable to extract meaningful content from the provided file." },
         { status: 400 }
       );
     }
     const response = await generateCourseFromSource(
       mode as SupportedMode,
-      condensed
+      workingText
     );
 
     return NextResponse.json(response);

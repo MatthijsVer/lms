@@ -71,6 +71,80 @@ export default async function SlugPage({ params }: { params: Params }) {
           <Separator className="my-8" />
 
           <div className="space-y-6">
+            <div className="border border-dashed items-center grid grid-cols-5 gap-6 justify-center p-8">
+              <img
+                alt="badge"
+                src="/badges/first-steps.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/knowledge-seeker.png"
+                className="h-[80px]"
+              />
+              <img alt="badge" src="/badges/legend.png" className="h-[80px]" />
+              <img
+                alt="badge"
+                src="/badges/master-learner.png"
+                className="h-[80px]"
+              />
+              <img alt="badge" src="/badges/scholar.png" className="h-[80px]" />
+              <img
+                alt="badge"
+                src="/badges/consistent.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/dedicated.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/unstoppable.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/iron-will.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/quiz-novice.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/quiz-expert.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/perfectionist.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/lesson-master.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/rising-star.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/elite-learner.png"
+                className="h-[80px]"
+              />
+              <img
+                alt="badge"
+                src="/badges/grandmaster.png"
+                className="h-[80px]"
+              />
+            </div>
             <h2 className="text-3xl font-semibold tracking-tight">
               Course Description
             </h2>

@@ -10,8 +10,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { UserDropdown } from "./UserDropdown";
 
 const navigationItems = [
-  { name: "Home", href: "/" },
   { name: "Courses", href: "/courses" },
+  { name: "Community", href: "/community" },
   { name: "Dashboard", href: "/dashboard" },
 ];
 
@@ -27,7 +27,7 @@ export function Navbar() {
 
         {/* Desktop navigation */}
         <nav className="hidden md:flex md:flex-1 md:items-center md:justify-between">
-          <div className="flex items-center space-x-6 ml-6">
+          <div className="flex items-center space-x-8 ml-8">
             {navigationItems.map((item) => (
               <Link
                 key={item.name}
