@@ -1,39 +1,59 @@
-import "server-only";
 import { prisma } from "@/lib/db";
-import {
-  XP_REWARDS,
-  calculateLevelFromXP,
-  calculateXPForLevel,
-} from "@/lib/gamification/xp-config";
-import { XPReason, BadgeRequirement } from "@/lib/types";
+import type { XPReason, BadgeRequirement } from "@/lib/generated/prisma";
 
 export class GamificationService {
+  // XP Configuration
+  private static readonly XP_CONFIG = {
+    LESSON_COMPLETED: 10,
+    QUIZ_PASSED: 5,
+    QUIZ_PERFECT_SCORE: 10,
+    COURSE_COMPLETED: 50,
+    STREAK_MILESTONE: 15,
+    BADGE_EARNED: 20,
+    DAILY_LOGIN: 2,
+    FIRST_LESSON_OF_DAY: 5,
+  };
+
+  // Level calculation
+  private static readonly BASE_XP_PER_LEVEL = 100;
+  private static readonly XP_MULTIPLIER = 1.5;
+
   /**
-   * Initialize game profile for a new user
+   * Calculate XP required for a given level
    */
-  static async initializeUserProfile(userId: string) {
-    const existingProfile = await prisma.userGameProfile.findUnique({
-      where: { userId },
-    });
-
-    if (existingProfile) {
-      return existingProfile;
-    }
-
-    return await prisma.userGameProfile.create({
-      data: {
-        userId,
-        totalXP: 0,
-        currentLevel: 1,
-        xpToNextLevel: calculateXPForLevel(1),
-        currentStreak: 0,
-        longestStreak: 0,
-      },
-    });
+  static calculateXPForLevel(level: number): number {
+    return Math.floor(
+      this.BASE_XP_PER_LEVEL * Math.pow(this.XP_MULTIPLIER, level - 1)
+    );
   }
 
   /**
-   * Award XP to a user and handle level ups
+   * Calculate level from total XP
+   */
+  static calculateLevelFromXP(totalXP: number): {
+    level: number;
+    xpToNextLevel: number;
+    currentLevelXP: number;
+  } {
+    let level = 1;
+    let xpForCurrentLevel = 0;
+    let xpForNextLevel = this.calculateXPForLevel(1);
+
+    while (totalXP >= xpForNextLevel) {
+      level++;
+      xpForCurrentLevel = xpForNextLevel;
+      xpForNextLevel += this.calculateXPForLevel(level);
+    }
+
+    return {
+      level,
+      xpToNextLevel: xpForNextLevel - totalXP,
+      currentLevelXP: totalXP - xpForCurrentLevel,
+    };
+  }
+
+  /**
+   * Award XP to a user and update their profile
    */
   static async awardXP({
     userId,
@@ -50,11 +70,24 @@ export class GamificationService {
     referenceId?: string;
     referenceType?: string;
   }) {
-    // Ensure user has a game profile
-    await this.initializeUserProfile(userId);
+    // Get or create user profile
+    let profile = await prisma.userGameProfile.findUnique({
+      where: { userId },
+    });
 
-    // Create XP transaction
-    const transaction = await prisma.xpTransaction.create({
+    if (!profile) {
+      profile = await prisma.userGameProfile.create({
+        data: {
+          userId,
+          totalXP: 0,
+          currentLevel: 1,
+          xpToNextLevel: this.calculateXPForLevel(1),
+        },
+      });
+    }
+
+    // Create XP transaction - note the capital letters in the model name
+    const transaction = await prisma.xPTransaction.create({
       data: {
         userId,
         amount,
@@ -65,60 +98,42 @@ export class GamificationService {
       },
     });
 
-    // Update user profile
-    const profile = await prisma.userGameProfile.update({
+    // Update profile with new XP
+    const newTotalXP = profile.totalXP + amount;
+    const levelInfo = this.calculateLevelFromXP(newTotalXP);
+    const oldLevel = profile.currentLevel;
+
+    const updatedProfile = await prisma.userGameProfile.update({
       where: { userId },
       data: {
-        totalXP: {
-          increment: amount,
-        },
+        totalXP: newTotalXP,
+        currentLevel: levelInfo.level,
+        xpToNextLevel: levelInfo.xpToNextLevel,
       },
     });
 
-    // Check for level up
-    const levelInfo = calculateLevelFromXP(profile.totalXP);
-    let leveledUp = false;
-
-    if (levelInfo.level > profile.currentLevel) {
-      leveledUp = true;
-      await prisma.userGameProfile.update({
-        where: { userId },
-        data: {
-          currentLevel: levelInfo.level,
-          xpToNextLevel: levelInfo.xpToNextLevel,
-        },
-      });
-
-      // Check for level-based badges
-      await this.checkAndAwardBadges(userId);
-    } else {
-      await prisma.userGameProfile.update({
-        where: { userId },
-        data: {
-          xpToNextLevel: levelInfo.xpToNextLevel,
-        },
-      });
-    }
-
     return {
       transaction,
-      profile: await prisma.userGameProfile.findUnique({ where: { userId } }),
-      leveledUp,
+      profile: updatedProfile,
+      leveledUp: levelInfo.level > oldLevel,
       newLevel: levelInfo.level,
     };
   }
 
   /**
-   * Update user streak
+   * Update user's daily streak
    */
-  static async updateStreak(userId: string) {
+  static async updateStreak(userId: string): Promise<{
+    currentStreak: number;
+    longestStreak: number;
+    isNewRecord: boolean;
+  }> {
     const profile = await prisma.userGameProfile.findUnique({
       where: { userId },
     });
 
     if (!profile) {
-      await this.initializeUserProfile(userId);
-      return await this.updateStreak(userId);
+      throw new Error("User profile not found");
     }
 
     const now = new Date();
@@ -132,75 +147,79 @@ export class GamificationService {
       : null;
 
     let newStreak = profile.currentStreak;
-    let awardedXP = 0;
+    let isNewRecord = false;
 
     if (!lastActivity) {
       // First activity ever
       newStreak = 1;
     } else {
-      const daysDiff = Math.floor(
+      const daysSinceLastActivity = Math.floor(
         (today.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (daysDiff === 0) {
-        // Same day, no change
-        return profile;
-      } else if (daysDiff === 1) {
-        // Consecutive day
+      if (daysSinceLastActivity === 0) {
+        // Same day - no change
+        return {
+          currentStreak: profile.currentStreak,
+          longestStreak: profile.longestStreak,
+          isNewRecord: false,
+        };
+      } else if (daysSinceLastActivity === 1) {
+        // Consecutive day - increment streak
         newStreak = profile.currentStreak + 1;
-        
-        // Award milestone XP
-        if (newStreak === 3) awardedXP = XP_REWARDS.STREAK_MILESTONE_3;
-        else if (newStreak === 7) awardedXP = XP_REWARDS.STREAK_MILESTONE_7;
-        else if (newStreak === 30) awardedXP = XP_REWARDS.STREAK_MILESTONE_30;
-        else if (newStreak === 100) awardedXP = XP_REWARDS.STREAK_MILESTONE_100;
       } else {
-        // Streak broken
+        // Streak broken - reset to 1
         newStreak = 1;
       }
     }
 
-    const updatedProfile = await prisma.userGameProfile.update({
+    const newLongestStreak = Math.max(newStreak, profile.longestStreak);
+    isNewRecord = newLongestStreak > profile.longestStreak;
+
+    await prisma.userGameProfile.update({
       where: { userId },
       data: {
         currentStreak: newStreak,
-        longestStreak: Math.max(newStreak, profile.longestStreak),
+        longestStreak: newLongestStreak,
         lastActivityDate: now,
       },
     });
 
     // Award streak milestone XP
-    if (awardedXP > 0) {
+    if (newStreak % 7 === 0 && newStreak > 0) {
       await this.awardXP({
         userId,
-        amount: awardedXP,
-        reason: XPReason.STREAK_MILESTONE,
-        description: `${newStreak} day streak milestone!`,
+        amount: this.XP_CONFIG.STREAK_MILESTONE,
+        reason: "STREAK_MILESTONE",
+        description: `${newStreak}-day streak milestone!`,
       });
     }
 
-    // Check for streak-based badges
-    await this.checkAndAwardBadges(userId);
-
-    return updatedProfile;
+    return {
+      currentStreak: newStreak,
+      longestStreak: newLongestStreak,
+      isNewRecord,
+    };
   }
 
   /**
    * Handle lesson completion
    */
   static async onLessonCompleted(userId: string, lessonId: string) {
+    // Update streak
     await this.updateStreak(userId);
 
+    // Award lesson completion XP
     const result = await this.awardXP({
       userId,
-      amount: XP_REWARDS.LESSON_COMPLETED,
-      reason: XPReason.LESSON_COMPLETED,
+      amount: this.XP_CONFIG.LESSON_COMPLETED,
+      reason: "LESSON_COMPLETED",
       description: "Completed a lesson",
       referenceId: lessonId,
       referenceType: "lesson",
     });
 
-    // Update statistics
+    // Update stats
     await prisma.userGameProfile.update({
       where: { userId },
       data: {
@@ -210,50 +229,6 @@ export class GamificationService {
       },
     });
 
-    await this.checkAndAwardBadges(userId);
-
-    return result;
-  }
-
-  /**
-   * Handle quiz completion
-   */
-  static async onQuizCompleted({
-    userId,
-    quizId,
-    score,
-    isPerfect,
-  }: {
-    userId: string;
-    quizId: string;
-    score: number;
-    isPerfect: boolean;
-  }) {
-    const xpAmount = isPerfect
-      ? XP_REWARDS.QUIZ_PERFECT_SCORE
-      : XP_REWARDS.QUIZ_PASSED;
-
-    const result = await this.awardXP({
-      userId,
-      amount: xpAmount,
-      reason: isPerfect ? XPReason.QUIZ_PERFECT_SCORE : XPReason.QUIZ_PASSED,
-      description: isPerfect ? "Perfect quiz score!" : "Passed a quiz",
-      referenceId: quizId,
-      referenceType: "quiz",
-    });
-
-    // Update statistics
-    await prisma.userGameProfile.update({
-      where: { userId },
-      data: {
-        totalQuizzesPassed: {
-          increment: 1,
-        },
-      },
-    });
-
-    await this.checkAndAwardBadges(userId);
-
     return result;
   }
 
@@ -261,16 +236,17 @@ export class GamificationService {
    * Handle course completion
    */
   static async onCourseCompleted(userId: string, courseId: string) {
+    // Award course completion XP
     const result = await this.awardXP({
       userId,
-      amount: XP_REWARDS.COURSE_COMPLETED,
-      reason: XPReason.COURSE_COMPLETED,
+      amount: this.XP_CONFIG.COURSE_COMPLETED,
+      reason: "COURSE_COMPLETED",
       description: "Completed a course",
       referenceId: courseId,
       referenceType: "course",
     });
 
-    // Update statistics
+    // Update stats
     await prisma.userGameProfile.update({
       where: { userId },
       data: {
@@ -280,7 +256,39 @@ export class GamificationService {
       },
     });
 
-    await this.checkAndAwardBadges(userId);
+    return result;
+  }
+
+  /**
+   * Handle quiz passed
+   */
+  static async onQuizPassed(
+    userId: string,
+    quizId: string,
+    isPerfectScore: boolean = false
+  ) {
+    const xpAmount = isPerfectScore
+      ? this.XP_CONFIG.QUIZ_PERFECT_SCORE
+      : this.XP_CONFIG.QUIZ_PASSED;
+
+    const result = await this.awardXP({
+      userId,
+      amount: xpAmount,
+      reason: isPerfectScore ? "QUIZ_PERFECT_SCORE" : "QUIZ_PASSED",
+      description: isPerfectScore ? "Perfect quiz score!" : "Passed a quiz",
+      referenceId: quizId,
+      referenceType: "quiz",
+    });
+
+    // Update stats
+    await prisma.userGameProfile.update({
+      where: { userId },
+      data: {
+        totalQuizzesPassed: {
+          increment: 1,
+        },
+      },
+    });
 
     return result;
   }
@@ -288,7 +296,7 @@ export class GamificationService {
   /**
    * Check and award badges based on user progress
    */
-  static async checkAndAwardBadges(userId: string) {
+  static async checkAndAwardBadges(userId: string): Promise<any[]> {
     const profile = await prisma.userGameProfile.findUnique({
       where: { userId },
       include: {
@@ -300,9 +308,11 @@ export class GamificationService {
       },
     });
 
-    if (!profile) return;
+    if (!profile) {
+      return [];
+    }
 
-    // Get all active badges user doesn't have yet
+    // Get all active badges that user hasn't earned yet
     const earnedBadgeIds = profile.userBadges.map((ub) => ub.badgeId);
     const availableBadges = await prisma.badge.findMany({
       where: {
@@ -313,53 +323,42 @@ export class GamificationService {
       },
     });
 
-    const newlyEarnedBadges = [];
+    const newlyEarnedBadges: any[] = [];
 
     for (const badge of availableBadges) {
-      let earned = false;
-
-      switch (badge.requirement) {
-        case BadgeRequirement.COMPLETE_COURSES:
-          earned = profile.totalCoursesCompleted >= badge.targetValue;
-          break;
-        case BadgeRequirement.COMPLETE_LESSONS:
-          earned = profile.totalLessonsCompleted >= badge.targetValue;
-          break;
-        case BadgeRequirement.MAINTAIN_STREAK:
-          earned = profile.currentStreak >= badge.targetValue;
-          break;
-        case BadgeRequirement.PASS_QUIZZES:
-          earned = profile.totalQuizzesPassed >= badge.targetValue;
-          break;
-        case BadgeRequirement.REACH_XP:
-          earned = profile.totalXP >= badge.targetValue;
-          break;
-        case BadgeRequirement.REACH_LEVEL:
-          earned = profile.currentLevel >= badge.targetValue;
-          break;
-      }
+      const earned = await this.checkBadgeRequirement(
+        userId,
+        badge.requirement,
+        badge.targetValue,
+        profile
+      );
 
       if (earned) {
-        await prisma.userBadge.create({
+        // Award the badge
+        const userBadge = await prisma.userBadge.create({
           data: {
             userId,
             badgeId: badge.id,
+            progress: badge.targetValue,
           },
         });
 
-        // Award badge XP
+        // Award XP for earning badge
         if (badge.xpReward > 0) {
           await this.awardXP({
             userId,
             amount: badge.xpReward,
-            reason: XPReason.BADGE_EARNED,
+            reason: "BADGE_EARNED",
             description: `Earned badge: ${badge.name}`,
             referenceId: badge.id,
             referenceType: "badge",
           });
         }
 
-        newlyEarnedBadges.push(badge);
+        newlyEarnedBadges.push({
+          ...badge,
+          earnedAt: userBadge.earnedAt,
+        });
       }
     }
 
@@ -367,7 +366,51 @@ export class GamificationService {
   }
 
   /**
-   * Get user's complete gamification profile
+   * Check if user meets badge requirement
+   */
+  private static async checkBadgeRequirement(
+    userId: string,
+    requirement: BadgeRequirement,
+    targetValue: number,
+    profile: any
+  ): Promise<boolean> {
+    switch (requirement) {
+      case "COMPLETE_COURSES":
+        return profile.totalCoursesCompleted >= targetValue;
+
+      case "COMPLETE_LESSONS":
+        return profile.totalLessonsCompleted >= targetValue;
+
+      case "MAINTAIN_STREAK":
+        return profile.currentStreak >= targetValue;
+
+      case "PASS_QUIZZES":
+        return profile.totalQuizzesPassed >= targetValue;
+
+      case "REACH_XP":
+        return profile.totalXP >= targetValue;
+
+      case "REACH_LEVEL":
+        return profile.currentLevel >= targetValue;
+
+      case "PERFECT_QUIZ_SCORE":
+        // Would need to query quiz attempts for perfect scores
+        const perfectQuizzes = await prisma.quizAttempt.count({
+          where: {
+            userId,
+            isCorrect: true,
+            score: 100, // Assuming 100 is perfect
+          },
+        });
+        return perfectQuizzes >= targetValue;
+
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Get user's gamification profile with stats
    */
   static async getUserProfile(userId: string) {
     let profile = await prisma.userGameProfile.findUnique({
@@ -381,57 +424,39 @@ export class GamificationService {
             earnedAt: "desc",
           },
         },
-        xpTransactions: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 20,
-        },
       },
     });
 
+    // Create profile if it doesn't exist
     if (!profile) {
-      profile = await this.initializeUserProfile(userId);
+      profile = await prisma.userGameProfile.create({
+        data: {
+          userId,
+          totalXP: 0,
+          currentLevel: 1,
+          xpToNextLevel: this.calculateXPForLevel(1),
+        },
+        include: {
+          userBadges: {
+            include: {
+              badge: true,
+            },
+          },
+        },
+      });
     }
 
     return profile;
   }
 
   /**
-   * Get leaderboard
+   * Get user's recent XP transactions
    */
-  static async getLeaderboard({
-    type = "XP_TOTAL",
-    limit = 100,
-  }: {
-    type?: string;
-    limit?: number;
-  }) {
-    const profiles = await prisma.userGameProfile.findMany({
+  static async getRecentTransactions(userId: string, limit: number = 10) {
+    return prisma.xPTransaction.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
       take: limit,
-      orderBy: {
-        totalXP: "desc",
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-      },
     });
-
-    return profiles.map((profile, index) => ({
-      rank: index + 1,
-      userId: profile.userId,
-      userName: profile.user.name,
-      userImage: profile.user.image,
-      score: profile.totalXP,
-      level: profile.currentLevel,
-      totalCoursesCompleted: profile.totalCoursesCompleted,
-      currentStreak: profile.currentStreak,
-    }));
   }
 }

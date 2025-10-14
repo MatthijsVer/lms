@@ -4,6 +4,7 @@ import { OrderingContent } from "@/lib/content-blocks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useLessonProgress } from "../LessonProgressContext";
 import {
   ArrowUpDown,
   Trophy,
@@ -31,9 +32,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import {
-  useSortable,
-} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 interface OrderingBlockRendererProps {
@@ -89,8 +88,10 @@ function SortableItem({
           "cursor-grab": !submitted,
           "cursor-grabbing": isDragging,
           "bg-background hover:bg-muted/50": !submitted,
-          "bg-green-50 border-green-500 dark:bg-green-950/30": submitted && isCorrect,
-          "bg-red-50 border-red-500 dark:bg-red-950/30": submitted && !isCorrect,
+          "bg-green-50 border-green-500 dark:bg-green-950/30":
+            submitted && isCorrect,
+          "bg-red-50 border-red-500 dark:bg-red-950/30":
+            submitted && !isCorrect,
           "opacity-50": isDragging,
           "shadow-md": isDragging,
         }
@@ -98,26 +99,29 @@ function SortableItem({
       {...attributes}
       {...listeners}
     >
-      <GripVertical className={cn(
-        "h-4 w-4 text-muted-foreground",
-        { "invisible": submitted }
-      )} />
-      
+      <GripVertical
+        className={cn("h-4 w-4 text-muted-foreground", {
+          invisible: submitted,
+        })}
+      />
+
       {showNumbers && (
-        <div className={cn(
-          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
-          {
-            "bg-primary/10": !submitted,
-            "bg-green-600 text-white": submitted && isCorrect,
-            "bg-red-600 text-white": submitted && !isCorrect,
-          }
-        )}>
+        <div
+          className={cn(
+            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
+            {
+              "bg-primary/10": !submitted,
+              "bg-green-600 text-white": submitted && isCorrect,
+              "bg-red-600 text-white": submitted && !isCorrect,
+            }
+          )}
+        >
           {index + 1}
         </div>
       )}
-      
+
       <span className="text-sm flex-1">{item.text}</span>
-      
+
       {submitted && (
         <div className="flex items-center gap-2">
           {item.hint && showHints && (
@@ -138,7 +142,7 @@ function SortableItem({
           )}
         </div>
       )}
-      
+
       {hint && item.hint && (
         <div className="absolute left-0 right-0 top-full mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 dark:bg-yellow-950/30 dark:border-yellow-900 dark:text-yellow-200 z-10">
           {item.hint}
@@ -160,6 +164,8 @@ export function OrderingBlockRenderer({
     content.timeLimit || null
   );
   const [timerActive, setTimerActive] = useState(false);
+  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const isCompleted = isBlockCompleted(blockId);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -175,7 +181,7 @@ export function OrderingBlockRenderer({
     const initialItems = content.shuffleItems
       ? [...content.items].sort(() => Math.random() - 0.5)
       : [...content.items];
-    
+
     setItems(initialItems);
   }, [content.items, content.shuffleItems]);
 
@@ -225,6 +231,21 @@ export function OrderingBlockRenderer({
   const handleSubmit = () => {
     setSubmitted(true);
     setTimerActive(false);
+
+    const score = getScore();
+    const maxScore = content.points || 10;
+    const earnedScore =
+      content.allowPartialCredit !== false
+        ? Math.floor((score.percentage / 100) * maxScore)
+        : score.percentage === 100
+          ? maxScore
+          : 0;
+
+    updateBlockProgress(blockId, {
+      completed: score.percentage === 100,
+      score: earnedScore,
+      maxScore,
+    });
   };
 
   const handleRetry = () => {
@@ -232,7 +253,7 @@ export function OrderingBlockRenderer({
     const reshuffled = content.shuffleItems
       ? [...content.items].sort(() => Math.random() - 0.5)
       : [...content.items];
-    
+
     setItems(reshuffled);
     setSubmitted(false);
     setShowHints({});
@@ -244,7 +265,10 @@ export function OrderingBlockRenderer({
     setShowHints((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
   };
 
-  const checkItemPosition = (item: OrderingContent["items"][0], currentIndex: number): boolean => {
+  const checkItemPosition = (
+    item: OrderingContent["items"][0],
+    currentIndex: number
+  ): boolean => {
     return item.correctPosition === currentIndex;
   };
 
@@ -257,11 +281,19 @@ export function OrderingBlockRenderer({
     });
 
     if (content.allowPartialCredit) {
-      return { correct, total: items.length, percentage: (correct / items.length) * 100 };
+      return {
+        correct,
+        total: items.length,
+        percentage: (correct / items.length) * 100,
+      };
     } else {
       // All or nothing scoring
       const allCorrect = correct === items.length;
-      return { correct: allCorrect ? items.length : 0, total: items.length, percentage: allCorrect ? 100 : 0 };
+      return {
+        correct: allCorrect ? items.length : 0,
+        total: items.length,
+        percentage: allCorrect ? 100 : 0,
+      };
     }
   };
 
@@ -276,6 +308,12 @@ export function OrderingBlockRenderer({
             <CardTitle className="text-lg flex items-center gap-2">
               <ArrowUpDown className="h-5 w-5" />
               {content.title || "Put Items in Order"}
+              {isCompleted && (
+                <Badge variant="secondary" className="ml-2">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Completed
+                </Badge>
+              )}
             </CardTitle>
             {content.instructions && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -309,7 +347,7 @@ export function OrderingBlockRenderer({
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={items.map(item => item.id)}
+                items={items.map((item) => item.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-3">
@@ -345,8 +383,11 @@ export function OrderingBlockRenderer({
             {submitted && score && (
               <Badge
                 variant={
-                  score.percentage === 100 ? "default" : 
-                  score.percentage >= 70 ? "secondary" : "destructive"
+                  score.percentage === 100
+                    ? "default"
+                    : score.percentage >= 70
+                      ? "secondary"
+                      : "destructive"
                 }
                 className="gap-1"
               >
@@ -355,7 +396,9 @@ export function OrderingBlockRenderer({
                 ) : (
                   <XCircle className="h-3 w-3" />
                 )}
-                {score.correct}/{score.total} correct {content.allowPartialCredit && `(${score.percentage.toFixed(0)}%)`}
+                {score.correct}/{score.total} correct{" "}
+                {content.allowPartialCredit &&
+                  `(${score.percentage.toFixed(0)}%)`}
               </Badge>
             )}
           </div>
@@ -366,10 +409,14 @@ export function OrderingBlockRenderer({
                 Submit Order
               </Button>
             ) : (
-              <Button variant="outline" onClick={handleRetry}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
+              <>
+                {!isCompleted && (
+                  <Button variant="outline" onClick={handleRetry}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -411,8 +458,10 @@ export function OrderingBlockRenderer({
             {score && score.percentage < 100 && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-950/30 dark:border-blue-900">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
-                  <strong>Your Order:</strong> {score.correct} out of {score.total} items were in the correct position.
-                  {content.allowPartialCredit && ` You earned ${score.percentage.toFixed(0)}% of the points.`}
+                  <strong>Your Order:</strong> {score.correct} out of{" "}
+                  {score.total} items were in the correct position.
+                  {content.allowPartialCredit &&
+                    ` You earned ${score.percentage.toFixed(0)}% of the points.`}
                 </p>
               </div>
             )}

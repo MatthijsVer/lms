@@ -43,6 +43,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
+import { useLessonProgress } from "../LessonProgressContext";
 
 interface DragDropBlockRendererProps {
   content: DragDropContent;
@@ -377,6 +378,8 @@ export function DragDropBlockRenderer({
   const [timerActive, setTimerActive] = useState(false);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const timerRef = useRef<NodeJS.Timeout>();
+  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const isCompleted = isBlockCompleted(blockId);
 
   // Improved sensors with better touch and mouse handling
   const sensors = useSensors(
@@ -578,23 +581,6 @@ export function DragDropBlockRenderer({
     ]
   );
 
-  const handleSubmit = useCallback(() => {
-    setSubmitted(true);
-    setTimerActive(false);
-  }, []);
-
-  const handleRetry = useCallback(() => {
-    setPlacements((prev) => prev.map((p) => ({ ...p, targetId: null })));
-    setSubmitted(false);
-    setShowHints({});
-    setTimeLeft(content.timeLimit || null);
-    setTimerActive(false);
-  }, [content.timeLimit]);
-
-  const toggleHint = useCallback((tokenId: string) => {
-    setShowHints((prev) => ({ ...prev, [tokenId]: !prev[tokenId] }));
-  }, []);
-
   const checkTokenPlacement = useCallback(
     (tokenId: string, targetId: string): boolean => {
       const token = content.tokens.find((t) => t.id === tokenId);
@@ -635,6 +621,44 @@ export function DragDropBlockRenderer({
     checkTokenPlacement,
   ]);
 
+  const handleSubmit = useCallback(() => {
+    setSubmitted(true);
+    setTimerActive(false);
+
+    const score = getScore();
+    const maxScore = content.points || 10;
+    const earnedScore =
+      content.allowPartialCredit !== false
+        ? Math.floor((score.percentage / 100) * maxScore)
+        : score.percentage === 100
+          ? maxScore
+          : 0;
+
+    updateBlockProgress(blockId, {
+      completed: score.percentage === 100,
+      score: earnedScore,
+      maxScore,
+    });
+  }, [
+    blockId,
+    content.allowPartialCredit,
+    content.points,
+    getScore,
+    updateBlockProgress,
+  ]);
+
+  const handleRetry = useCallback(() => {
+    setPlacements((prev) => prev.map((p) => ({ ...p, targetId: null })));
+    setSubmitted(false);
+    setShowHints({});
+    setTimeLeft(content.timeLimit || null);
+    setTimerActive(false);
+  }, [content.timeLimit]);
+
+  const toggleHint = useCallback((tokenId: string) => {
+    setShowHints((prev) => ({ ...prev, [tokenId]: !prev[tokenId] }));
+  }, []);
+
   const canSubmit = placements.some((p) => p.targetId !== null);
   const score = submitted ? getScore() : null;
 
@@ -650,6 +674,12 @@ export function DragDropBlockRenderer({
             <CardTitle className="text-lg flex items-center gap-2">
               <Move className="h-5 w-5" />
               {content.title || "Drag & Drop"}
+              {isCompleted && (
+                <Badge variant="secondary" className="ml-2">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Completed
+                </Badge>
+              )}
             </CardTitle>
             {content.instructions && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -760,10 +790,18 @@ export function DragDropBlockRenderer({
                 Submit Placement
               </Button>
             ) : (
-              <Button variant="outline" onClick={handleRetry} size="default">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
+              <>
+                {!isCompleted && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRetry}
+                    size="default"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>

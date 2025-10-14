@@ -7,49 +7,72 @@ interface ContentBlockData {
 }
 
 /**
- * Calculate the total possible points for a lesson based on its content blocks
+ * Get the default points for each content block type
  */
-export function calculateLessonTotalPoints(contentBlocks: ContentBlockData[]): number {
-  return contentBlocks.reduce((total, block) => {
-    switch (block.type) {
-      case ContentBlockType.QUIZ:
-        return total + (block.content.points || 1);
-      case ContentBlockType.FILL_IN_BLANK:
-        return total + (block.content.points || 1);
-      // Add more content types that have points as needed
-      default:
-        return total;
-    }
-  }, 0);
+function getDefaultPointsForType(type: ContentBlockType): number {
+  switch (type) {
+    case ContentBlockType.CODE_EXERCISE:
+      return 20; // Code exercises are more complex
+    case ContentBlockType.QUIZ:
+    case ContentBlockType.FILL_IN_BLANK:
+    case ContentBlockType.MATCHING:
+    case ContentBlockType.ORDERING:
+    case ContentBlockType.DRAG_DROP:
+    case ContentBlockType.TIMELINE:
+      return 10; // Standard interactive exercises
+    default:
+      return 0; // Non-interactive blocks
+  }
 }
 
 /**
- * Get content blocks that award points
+ * Check if a content block awards points
  */
-export function getPointAwardingBlocks(contentBlocks: ContentBlockData[]): ContentBlockData[] {
-  return contentBlocks.filter(block => {
-    switch (block.type) {
-      case ContentBlockType.QUIZ:
-      case ContentBlockType.FILL_IN_BLANK:
-        return true;
-      default:
-        return false;
-    }
-  });
+function isPointAwardingBlock(type: ContentBlockType): boolean {
+  const pointAwardingTypes = [
+    ContentBlockType.QUIZ,
+    ContentBlockType.FILL_IN_BLANK,
+    ContentBlockType.MATCHING,
+    ContentBlockType.ORDERING,
+    ContentBlockType.DRAG_DROP,
+    ContentBlockType.TIMELINE,
+    ContentBlockType.CODE_EXERCISE,
+  ];
+  
+  return pointAwardingTypes.includes(type);
 }
 
 /**
  * Calculate points for a specific content block
  */
 export function getContentBlockPoints(block: ContentBlockData): number {
-  switch (block.type) {
-    case ContentBlockType.QUIZ:
-      return block.content.points || 1;
-    case ContentBlockType.FILL_IN_BLANK:
-      return block.content.points || 1;
-    default:
-      return 0;
+  if (!isPointAwardingBlock(block.type)) {
+    return 0;
   }
+
+  // Check if content has explicit points defined
+  if (block.content?.points !== undefined && block.content.points !== null) {
+    return block.content.points;
+  }
+
+  // Return default points for this type
+  return getDefaultPointsForType(block.type);
+}
+
+/**
+ * Get content blocks that award points
+ */
+export function getPointAwardingBlocks(contentBlocks: ContentBlockData[]): ContentBlockData[] {
+  return contentBlocks.filter(block => isPointAwardingBlock(block.type));
+}
+
+/**
+ * Calculate the total possible points for a lesson based on its content blocks
+ */
+export function calculateLessonTotalPoints(contentBlocks: ContentBlockData[]): number {
+  return contentBlocks.reduce((total, block) => {
+    return total + getContentBlockPoints(block);
+  }, 0);
 }
 
 /**
@@ -78,4 +101,42 @@ export function getLessonPointsSummary(contentBlocks: ContentBlockData[]) {
 export function calculatePointsProgress(earnedPoints: number, totalPoints: number): number {
   if (totalPoints === 0) return 100; // No points to earn = 100% complete
   return Math.round((earnedPoints / totalPoints) * 100);
+}
+
+/**
+ * Get a human-readable name for a content block type
+ */
+export function getContentBlockTypeName(type: ContentBlockType): string {
+  switch (type) {
+    case ContentBlockType.QUIZ:
+      return "Quiz";
+    case ContentBlockType.FILL_IN_BLANK:
+      return "Fill in the Blanks";
+    case ContentBlockType.MATCHING:
+      return "Matching";
+    case ContentBlockType.ORDERING:
+      return "Ordering";
+    case ContentBlockType.DRAG_DROP:
+      return "Drag & Drop";
+    case ContentBlockType.TIMELINE:
+      return "Timeline";
+    case ContentBlockType.CODE_EXERCISE:
+      return "Code Exercise";
+    case ContentBlockType.EXERCISE:
+      return "Exercise";
+    case ContentBlockType.TEXT:
+      return "Text";
+    case ContentBlockType.VIDEO:
+      return "Video";
+    case ContentBlockType.IMAGE:
+      return "Image";
+    case ContentBlockType.CODE:
+      return "Code";
+    case ContentBlockType.PDF:
+      return "PDF";
+    case ContentBlockType.AUDIO:
+      return "Audio";
+    default:
+      return "Content";
+  }
 }

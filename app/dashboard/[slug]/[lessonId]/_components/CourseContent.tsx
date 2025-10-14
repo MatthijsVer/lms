@@ -121,7 +121,8 @@ function CourseContentInner({ data }: iAppProps) {
       if (result.status === "success") {
         // 🎮 Show gamification toast
         if (result.gamification) {
-          const { xpEarned, leveledUp, newLevel } = result.gamification;
+          const { xpEarned, leveledUp, newLevel, newBadges } =
+            result.gamification;
 
           if (leveledUp) {
             triggerConfetti();
@@ -142,6 +143,23 @@ function CourseContentInner({ data }: iAppProps) {
               </div>,
               { duration: 3000 }
             );
+          }
+
+          // Show badge notifications if any were earned
+          if (newBadges && newBadges.length > 0) {
+            setTimeout(() => {
+              newBadges.forEach((badge, index) => {
+                setTimeout(() => {
+                  toast.success(
+                    <div className="flex flex-col gap-1">
+                      <div className="font-bold">🏆 Badge Unlocked!</div>
+                      <div className="text-sm">{badge.name}</div>
+                    </div>,
+                    { duration: 4000 }
+                  );
+                }, index * 500);
+              });
+            }, 1000);
           }
         } else {
           toast.success(result.message);

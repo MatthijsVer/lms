@@ -43,6 +43,7 @@ import {
   restrictToVerticalAxis,
   restrictToWindowEdges,
 } from "@dnd-kit/modifiers";
+import { useLessonProgress } from "../LessonProgressContext";
 
 interface TimelineBlockRendererProps {
   content: TimelineContent;
@@ -271,6 +272,8 @@ export function TimelineBlockRenderer({
   const [submitted, setSubmitted] = useState(false);
   const [showHints, setShowHints] = useState<{ [key: string]: boolean }>({});
   const [activeId, setActiveId] = useState<string | null>(null);
+  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const isCompleted = isBlockCompleted(blockId);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -345,24 +348,6 @@ export function TimelineBlockRenderer({
     }
   }, []);
 
-  const handleSubmit = useCallback(() => {
-    setSubmitted(true);
-  }, []);
-
-  const handleRetry = useCallback(() => {
-    // Re-shuffle the items
-    const shuffled = [...timelineItems].sort(() => Math.random() - 0.5);
-    setTimelineItems(
-      shuffled.map((item, index) => ({ ...item, currentPosition: index }))
-    );
-    setSubmitted(false);
-    setShowHints({});
-  }, [timelineItems]);
-
-  const toggleHint = useCallback((itemId: string) => {
-    setShowHints((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
-  }, []);
-
   const checkItemPosition = useCallback((item: TimelineItem): boolean => {
     return item.currentPosition === item.originalPosition;
   }, []);
@@ -392,6 +377,47 @@ export function TimelineBlockRenderer({
     }
   }, [timelineItems, submitted, checkItemPosition, content.allowPartialCredit]);
 
+  const handleSubmit = useCallback(() => {
+    setSubmitted(true);
+
+    const score = getScore;
+    if (score) {
+      const maxScore = content.points || 10;
+      const earnedScore =
+        content.allowPartialCredit !== false
+          ? Math.floor((score.percentage / 100) * maxScore)
+          : score.percentage === 100
+            ? maxScore
+            : 0;
+
+      updateBlockProgress(blockId, {
+        completed: score.percentage === 100,
+        score: earnedScore,
+        maxScore,
+      });
+    }
+  }, [
+    blockId,
+    content.allowPartialCredit,
+    content.points,
+    getScore,
+    updateBlockProgress,
+  ]);
+
+  const handleRetry = useCallback(() => {
+    // Re-shuffle the items
+    const shuffled = [...timelineItems].sort(() => Math.random() - 0.5);
+    setTimelineItems(
+      shuffled.map((item, index) => ({ ...item, currentPosition: index }))
+    );
+    setSubmitted(false);
+    setShowHints({});
+  }, [timelineItems]);
+
+  const toggleHint = useCallback((itemId: string) => {
+    setShowHints((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
+  }, []);
+
   const canSubmit = timelineItems.length > 0;
   const activeItem = activeId
     ? timelineItems.find((item) => item.id === activeId)
@@ -418,6 +444,12 @@ export function TimelineBlockRenderer({
             <CardTitle className="text-lg flex items-center gap-2">
               <MapPin className="h-5 w-5" />
               {content.title || "Timeline Ordering"}
+              {isCompleted && (
+                <Badge variant="secondary" className="ml-2">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Completed
+                </Badge>
+              )}
             </CardTitle>
             {content.instructions && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -535,10 +567,18 @@ export function TimelineBlockRenderer({
                 Check Order
               </Button>
             ) : (
-              <Button variant="outline" onClick={handleRetry} size="default">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
+              <>
+                {!isCompleted && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRetry}
+                    size="default"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>

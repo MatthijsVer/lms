@@ -1,7 +1,32 @@
-import { PrismaClient } from "@prisma/client";
-import { BadgeCategory, BadgeRequirement, BadgeRarity } from '@/lib/types'
+import { PrismaClient } from "../lib/generated/prisma/index.js";
 
 const prisma = new PrismaClient();
+
+// Define the enums directly
+const BadgeCategory = {
+  COURSE_COMPLETION: "COURSE_COMPLETION",
+  LEARNING_STREAK: "LEARNING_STREAK",
+  QUIZ_MASTER: "QUIZ_MASTER",
+  PERFECTIONIST: "PERFECTIONIST",
+  MILESTONE: "MILESTONE",
+};
+
+const BadgeRequirement = {
+  COMPLETE_COURSES: "COMPLETE_COURSES",
+  MAINTAIN_STREAK: "MAINTAIN_STREAK",
+  PASS_QUIZZES: "PASS_QUIZZES",
+  PERFECT_QUIZ_SCORE: "PERFECT_QUIZ_SCORE",
+  COMPLETE_LESSONS: "COMPLETE_LESSONS",
+  REACH_LEVEL: "REACH_LEVEL",
+};
+
+const BadgeRarity = {
+  Common: "Common",
+  Uncommon: "Uncommon",
+  Rare: "Rare",
+  Epic: "Epic",
+  Legendary: "Legendary",
+};
 
 const BADGES = [
   // Course Completion Badges

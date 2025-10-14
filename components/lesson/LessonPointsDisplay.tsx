@@ -3,9 +3,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Star, Target, CheckCircle } from "lucide-react";
-import { calculateLessonTotalPoints, getLessonPointsSummary, calculatePointsProgress } from "@/lib/lesson-points";
+import { Trophy, Star, Target, CheckCircle, Circle } from "lucide-react";
+import {
+  calculateLessonTotalPoints,
+  getLessonPointsSummary,
+  calculatePointsProgress,
+  getContentBlockTypeName,
+} from "@/lib/lesson-points";
 import { ContentBlockType } from "@/lib/content-blocks";
+import { cn } from "@/lib/utils";
 
 interface ContentBlockData {
   id: string;
@@ -29,23 +35,40 @@ interface LessonPointsDisplayProps {
   className?: string;
 }
 
-export function LessonPointsDisplay({ contentBlocks, userProgress, className }: LessonPointsDisplayProps) {
+export function LessonPointsDisplay({
+  contentBlocks,
+  userProgress,
+  className,
+}: LessonPointsDisplayProps) {
   const summary = getLessonPointsSummary(contentBlocks);
   const earnedPoints = userProgress?.totalEarned || 0;
-  const progressPercentage = calculatePointsProgress(earnedPoints, summary.totalPoints);
+  const progressPercentage = calculatePointsProgress(
+    earnedPoints,
+    summary.totalPoints
+  );
 
   if (summary.totalPoints === 0) {
     return null;
   }
 
   const isComplete = earnedPoints === summary.totalPoints;
+  const hasStarted = earnedPoints > 0;
 
   return (
     <Card className={className}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isComplete ? 'bg-green-100 dark:bg-green-900/20' : 'bg-yellow-100 dark:bg-yellow-900/20'}`}>
+            <div
+              className={cn(
+                "p-2 rounded-lg transition-colors",
+                isComplete
+                  ? "bg-green-100 dark:bg-green-900/20"
+                  : hasStarted
+                    ? "bg-blue-100 dark:bg-blue-900/20"
+                    : "bg-yellow-100 dark:bg-yellow-900/20"
+              )}
+            >
               {isComplete ? (
                 <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
               ) : (
@@ -55,15 +78,22 @@ export function LessonPointsDisplay({ contentBlocks, userProgress, className }: 
             <div>
               <h3 className="font-semibold text-sm">Lesson Points</h3>
               <p className="text-xs text-muted-foreground">
-                {isComplete ? "All exercises completed!" : "Complete exercises to earn points"}
+                {isComplete
+                  ? "All exercises completed! 🎉"
+                  : hasStarted
+                    ? "Keep going! Complete all exercises"
+                    : "Complete exercises to earn points"}
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <Badge variant={isComplete ? "default" : "secondary"} className="gap-1">
+            <Badge
+              variant={isComplete ? "default" : "secondary"}
+              className="gap-1"
+            >
               <Star className="h-3 w-3" />
-              {earnedPoints}/{summary.totalPoints} {summary.totalPoints === 1 ? "point" : "points"}
+              {earnedPoints}/{summary.totalPoints} pts
             </Badge>
           </div>
         </div>
@@ -81,28 +111,65 @@ export function LessonPointsDisplay({ contentBlocks, userProgress, className }: 
           <div className="mt-3 pt-3 border-t space-y-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Target className="h-3 w-3" />
-              <span>Point breakdown:</span>
+              <span>
+                Exercises (
+                {
+                  summary.breakdown.filter((_, i) => {
+                    const userBlockScore = userProgress?.blockScores.find(
+                      (score) => score.blockId === summary.breakdown[i].id
+                    );
+                    const earned = userBlockScore?.earned || 0;
+                    return earned === summary.breakdown[i].points;
+                  }).length
+                }
+                /{summary.breakdown.length} completed):
+              </span>
             </div>
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-1.5">
               {summary.breakdown.map((item, index) => {
-                const userBlockScore = userProgress?.blockScores.find(score => score.blockId === item.id);
+                const userBlockScore = userProgress?.blockScores.find(
+                  (score) => score.blockId === item.id
+                );
                 const earnedForBlock = userBlockScore?.earned || 0;
                 const isBlockComplete = earnedForBlock === item.points;
+                const isBlockStarted = earnedForBlock > 0 && !isBlockComplete;
 
                 return (
-                  <div key={item.id} className="flex items-center justify-between text-xs">
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "flex items-center justify-between text-xs p-2 rounded-md transition-colors",
+                      isBlockComplete && "bg-green-50 dark:bg-green-950/20",
+                      isBlockStarted && "bg-blue-50 dark:bg-blue-950/20",
+                      !isBlockStarted && !isBlockComplete && "bg-muted/30"
+                    )}
+                  >
                     <div className="flex items-center gap-2">
-                      {isBlockComplete && (
-                        <CheckCircle className="h-3 w-3 text-green-600" />
+                      {isBlockComplete ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                      ) : isBlockStarted ? (
+                        <Circle className="h-3.5 w-3.5 text-blue-600 flex-shrink-0 fill-blue-600" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
                       )}
-                      <span className="text-muted-foreground">
-                        {item.type === ContentBlockType.QUIZ ? "Quiz" : 
-                         item.type === ContentBlockType.FILL_IN_BLANK ? "Fill-in-the-blank" : 
-                         item.type} {index + 1}
+                      <span
+                        className={cn(
+                          "text-muted-foreground",
+                          isBlockComplete &&
+                            "text-green-700 dark:text-green-300 font-medium"
+                        )}
+                      >
+                        {getContentBlockTypeName(item.type)}
                       </span>
                     </div>
-                    <span className="font-medium">
-                      {earnedForBlock}/{item.points} {item.points === 1 ? "pt" : "pts"}
+                    <span
+                      className={cn(
+                        "font-medium tabular-nums",
+                        isBlockComplete && "text-green-700 dark:text-green-300",
+                        isBlockStarted && "text-blue-700 dark:text-blue-300"
+                      )}
+                    >
+                      {earnedForBlock}/{item.points} pts
                     </span>
                   </div>
                 );

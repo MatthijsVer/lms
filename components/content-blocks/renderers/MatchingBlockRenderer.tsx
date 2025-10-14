@@ -13,8 +13,9 @@ import {
   XCircle,
   Timer,
 } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useLessonProgress } from "../LessonProgressContext";
 
 interface MatchingBlockRendererProps {
   content: MatchingContent;
@@ -47,12 +48,14 @@ export function MatchingBlockRenderer({
   );
   const [timerActive, setTimerActive] = useState(false);
 
+  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const isCompleted = isBlockCompleted(blockId);
+
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const leftRefs = useRef<(HTMLDivElement | null)[]>([]);
   const rightRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Shuffle right items if enabled
   const pairs = content.pairs || [];
   const [rightOrderMap, setRightOrderMap] = useState<number[]>(() => {
     if (content.shuffleItems) {
@@ -62,7 +65,6 @@ export function MatchingBlockRenderer({
     return Array.from({ length: pairs.length }, (_, i) => i);
   });
 
-  // Timer effect
   useEffect(() => {
     if (!timerActive || !timeLeft || timeLeft <= 0 || submitted) return;
 
@@ -103,34 +105,39 @@ export function MatchingBlockRenderer({
     if (submitted || selectedLeft === null) return;
 
     const existingConnectionIndex = connections.findIndex(
-      (conn) => conn.leftIndex === selectedLeft || conn.rightIndex === rightIndex
+      (conn) =>
+        conn.leftIndex === selectedLeft || conn.rightIndex === rightIndex
     );
 
     if (existingConnectionIndex !== -1) {
-      // Remove existing connection
-      setConnections(connections.filter((_, i) => i !== existingConnectionIndex));
+      setConnections(
+        connections.filter((_, i) => i !== existingConnectionIndex)
+      );
     }
 
-    // Add new connection
     setConnections([...connections, { leftIndex: selectedLeft, rightIndex }]);
     setSelectedLeft(null);
-
-    // Show immediate feedback if enabled
-    if (content.showFeedback) {
-      const actualRightIndex = rightOrderMap[rightIndex];
-      const isCorrect = selectedLeft === actualRightIndex;
-      // You could add visual feedback here
-    }
-  };
-
-  const removeConnection = (leftIndex: number) => {
-    setConnections(connections.filter((conn) => conn.leftIndex !== leftIndex));
   };
 
   const handleSubmit = () => {
     setSubmitted(true);
     setTimerActive(false);
     setSelectedLeft(null);
+
+    const score = getScore();
+    const maxScore = content.points || 10;
+    const earnedScore =
+      content.allowPartialCredit !== false
+        ? Math.floor((score.correct / score.total) * maxScore)
+        : score.correct === score.total
+          ? maxScore
+          : 0;
+
+    updateBlockProgress(blockId, {
+      completed: score.correct === score.total,
+      score: earnedScore,
+      maxScore,
+    });
   };
 
   const handleRetry = () => {
@@ -140,7 +147,6 @@ export function MatchingBlockRenderer({
     setShowHints({});
     setTimeLeft(content.timeLimit || null);
     setTimerActive(false);
-    // Re-shuffle if enabled
     if (content.shuffleItems) {
       const indices = Array.from({ length: pairs.length }, (_, i) => i);
       setRightOrderMap(indices.sort(() => Math.random() - 0.5));
@@ -202,11 +208,10 @@ export function MatchingBlockRenderer({
     const isCorrect = submitted && checkConnection(conn);
     const color = submitted
       ? isCorrect
-        ? "rgb(34 197 94)" // green-500
-        : "rgb(239 68 68)" // red-500
-      : "rgb(99 102 241)"; // indigo-500
+        ? "rgb(34 197 94)"
+        : "rgb(239 68 68)"
+      : "rgb(99 102 241)";
 
-    // Create a curved path
     const midX = (start.x + end.x) / 2;
     const path = `M ${start.x} ${start.y} Q ${midX} ${start.y} ${midX} ${
       (start.y + end.y) / 2
@@ -231,7 +236,8 @@ export function MatchingBlockRenderer({
   };
 
   const renderTemporaryLine = () => {
-    if (selectedLeft === null || hoveredRight === null || submitted) return null;
+    if (selectedLeft === null || hoveredRight === null || submitted)
+      return null;
 
     const points = getConnectionPoints(selectedLeft, hoveredRight);
     if (!points) return null;
@@ -245,7 +251,7 @@ export function MatchingBlockRenderer({
     return (
       <path
         d={path}
-        stroke="rgb(156 163 175)" // gray-400
+        stroke="rgb(156 163 175)"
         strokeWidth="2"
         fill="none"
         strokeDasharray="5 5"
@@ -265,6 +271,12 @@ export function MatchingBlockRenderer({
             <CardTitle className="text-lg flex items-center gap-2">
               <Link2 className="h-5 w-5" />
               {content.title || "Match the Items"}
+              {isCompleted && (
+                <Badge variant="secondary" className="ml-2">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Completed
+                </Badge>
+              )}
             </CardTitle>
             {content.instructions && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -284,7 +296,8 @@ export function MatchingBlockRenderer({
             )}
             <Badge variant="secondary" className="gap-1">
               <Trophy className="h-3 w-3" />
-              {content.points || 1} {content.points === 1 ? "point" : "points"}
+              {content.points || 10}{" "}
+              {(content.points || 10) === 1 ? "point" : "points"}
             </Badge>
           </div>
         </div>
@@ -294,7 +307,6 @@ export function MatchingBlockRenderer({
           ref={containerRef}
           className="relative bg-muted/30 rounded-lg border p-6"
         >
-          {/* SVG for drawing lines */}
           <svg
             ref={svgRef}
             className="absolute inset-0 pointer-events-none z-10"
@@ -304,7 +316,6 @@ export function MatchingBlockRenderer({
             {renderTemporaryLine()}
           </svg>
 
-          {/* Matching items */}
           <div className="grid grid-cols-2 gap-8 relative z-20">
             {/* Left side */}
             <div className="space-y-3">
@@ -396,7 +407,8 @@ export function MatchingBlockRenderer({
                         "cursor-not-allowed opacity-50":
                           !submitted && selectedLeft === null,
                         "ring-2 ring-primary":
-                          hoveredRight === displayIndex && selectedLeft !== null,
+                          hoveredRight === displayIndex &&
+                          selectedLeft !== null,
                         "bg-green-50 border-green-500 dark:bg-green-950/30":
                           submitted &&
                           hasConnection &&
@@ -429,7 +441,6 @@ export function MatchingBlockRenderer({
           </div>
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center gap-2">
             {submitted && score && (
@@ -464,15 +475,18 @@ export function MatchingBlockRenderer({
                 Submit Matches
               </Button>
             ) : (
-              <Button variant="outline" onClick={handleRetry}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
+              <>
+                {!isCompleted && (
+                  <Button variant="outline" onClick={handleRetry}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Feedback section */}
         {submitted && (
           <div className="mt-4 space-y-3">
             {pairs.map((pair, index) => {
@@ -485,17 +499,14 @@ export function MatchingBlockRenderer({
               return (
                 <div
                   key={pair.id}
-                  className={cn(
-                    "p-3 rounded-lg border",
-                    {
-                      "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-900":
-                        isMatched && isCorrect,
-                      "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900":
-                        isMatched && !isCorrect,
-                      "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-900":
-                        !isMatched,
-                    }
-                  )}
+                  className={cn("p-3 rounded-lg border", {
+                    "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-900":
+                      isMatched && isCorrect,
+                    "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900":
+                      isMatched && !isCorrect,
+                    "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-900":
+                      !isMatched,
+                  })}
                 >
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">

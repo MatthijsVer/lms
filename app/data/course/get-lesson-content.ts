@@ -2,11 +2,10 @@ import "server-only";
 import { requireUser } from "../user/require-user";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { getUserLessonPoints } from "@/lib/user-lesson-progress";
 
 export async function getLessonContent(lessonId: string) {
   const session = await requireUser();
-
+  
   const lesson = await prisma.lesson.findUnique({
     where: {
       id: lessonId,
@@ -71,12 +70,45 @@ export async function getLessonContent(lessonId: string) {
     return notFound();
   }
 
-  // Get user's earned points for this lesson
-  const userProgress = await getUserLessonPoints(lessonId, session.id);
+  // Get user's earned points for each content block
+  const blockProgress = await prisma.contentBlockProgress.findMany({
+    where: {
+      userId: session.id,
+      contentBlockId: {
+        in: lesson.contentBlocks.map(block => block.id),
+      },
+    },
+    select: {
+      contentBlockId: true,
+      type: true,
+      metadata: true,
+      completed: true,
+    },
+  });
+
+  // Calculate total earned points and build block scores
+  let totalEarned = 0;
+  const blockScores = blockProgress.map(progress => {
+    const metadata = progress.metadata as any;
+    const earned = metadata?.score || 0;
+    const maxPoints = metadata?.maxScore || 0;
+    
+    totalEarned += earned;
+    
+    return {
+      blockId: progress.contentBlockId,
+      type: progress.type,
+      earned,
+      maxPoints,
+    };
+  });
 
   return {
     ...lesson,
-    userProgress,
+    userProgress: {
+      totalEarned,
+      blockScores,
+    },
   };
 }
 

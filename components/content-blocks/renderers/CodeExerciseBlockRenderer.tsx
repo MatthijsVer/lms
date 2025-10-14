@@ -6,7 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CodeExerciseContent } from "@/lib/content-blocks";
-import { CheckCircle2, RefreshCw, XCircle, Eye, EyeOff, Play } from "lucide-react";
+import {
+  CheckCircle2,
+  RefreshCw,
+  XCircle,
+  Eye,
+  EyeOff,
+  Play,
+  Trophy,
+} from "lucide-react";
+import { useLessonProgress } from "../LessonProgressContext";
 
 interface CodeExerciseBlockRendererProps {
   content: CodeExerciseContent;
@@ -38,15 +47,41 @@ export function CodeExerciseBlockRenderer({
   const runTokenRef = useRef(runToken);
   const runnerContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const isCompleted = isBlockCompleted(blockId);
+
   useEffect(() => {
     runTokenRef.current = runToken;
   }, [runToken]);
 
   useEffect(() => {
     if (runnerOutput.length > 0 || testResults.length > 0) {
-      runnerContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      runnerContainerRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
   }, [runnerOutput, testResults]);
+
+  // Update progress when tests complete
+  useEffect(() => {
+    if (testResults.length > 0 && !isRunning) {
+      const passedCount = testResults.filter(
+        (test) => test.status === "pass"
+      ).length;
+      const totalTests = tests.length;
+      const allPassed = passedCount === totalTests;
+
+      const maxScore = 20; // Code exercises are worth more points
+      const score = Math.floor((passedCount / totalTests) * maxScore);
+
+      updateBlockProgress(blockId, {
+        completed: allPassed,
+        score,
+        maxScore,
+      });
+    }
+  }, [testResults, isRunning, blockId, updateBlockProgress]);
 
   const tests = useMemo(
     () =>
@@ -58,7 +93,9 @@ export function CodeExerciseBlockRenderer({
   );
   const hasTests = tests.length > 0;
   const heading = content.title?.trim() || "Code exercise";
-  const prompt = content.prompt?.trim() || "Review the instructions and complete the starter code.";
+  const prompt =
+    content.prompt?.trim() ||
+    "Review the instructions and complete the starter code.";
 
   const runnerHtml = useMemo(() => {
     if (!hasTests) return "";
@@ -167,7 +204,11 @@ export function CodeExerciseBlockRenderer({
         return;
       }
 
-      if (data.type === "log" || data.type === "warn" || data.type === "error") {
+      if (
+        data.type === "log" ||
+        data.type === "warn" ||
+        data.type === "error"
+      ) {
         setRunnerOutput((previous) => [
           ...previous,
           {
@@ -223,20 +264,41 @@ export function CodeExerciseBlockRenderer({
     setTestResults([]);
   };
 
-  const passedCount = testResults.filter((test) => test.status === "pass").length;
-  const failedCount = testResults.filter((test) => test.status === "fail").length;
+  const passedCount = testResults.filter(
+    (test) => test.status === "pass"
+  ).length;
+  const failedCount = testResults.filter(
+    (test) => test.status === "fail"
+  ).length;
 
   return (
     <div className="space-y-6 rounded-lg border bg-card text-card-foreground shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b bg-muted/40 px-4 py-4">
         <div className="space-y-1">
-          <p className="text-base font-semibold">{heading}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-base font-semibold">{heading}</p>
+            {isCompleted && (
+              <Badge variant="secondary">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Completed
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
             {prompt}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
+          <Badge variant="secondary" className="gap-1">
+            <Trophy className="h-3 w-3" />
+            20 points
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="gap-2"
+          >
             <RefreshCw className="h-4 w-4" />
             Reset
           </Button>
@@ -271,7 +333,11 @@ export function CodeExerciseBlockRenderer({
           placeholder="// Write your solution here"
         />
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{hasTests ? `${tests.length} test${tests.length === 1 ? "" : "s"} available` : "No automated tests"}</span>
+          <span>
+            {hasTests
+              ? `${tests.length} test${tests.length === 1 ? "" : "s"} available`
+              : "No automated tests"}
+          </span>
           <Button
             variant="default"
             size="sm"
@@ -334,8 +400,8 @@ export function CodeExerciseBlockRenderer({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <span>Test results</span>
-            {hasTests && (
-              <Badge variant={failedCount > 0 ? "destructive" : "secondary"}>
+            {hasTests && testResults.length > 0 && (
+              <Badge variant={failedCount > 0 ? "destructive" : "default"}>
                 {passedCount}/{tests.length} passed
               </Badge>
             )}

@@ -5,9 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Square, Trophy, Lightbulb, HelpCircle } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Square,
+  Trophy,
+  Lightbulb,
+  HelpCircle,
+} from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useLessonProgress } from "../LessonProgressContext";
 
 interface FillInBlankBlockRendererProps {
   content: FillInBlankContent;
@@ -15,18 +23,41 @@ interface FillInBlankBlockRendererProps {
   lessonId: string;
 }
 
-export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInBlankBlockRendererProps) {
+export function FillInBlankBlockRenderer({
+  content,
+  blockId,
+  lessonId,
+}: FillInBlankBlockRendererProps) {
   const [answers, setAnswers] = useState<{ [blankIndex: number]: string }>({});
   const [submitted, setSubmitted] = useState(false);
-  const [showHints, setShowHints] = useState<{ [blankIndex: number]: boolean }>({});
+  const [showHints, setShowHints] = useState<{ [blankIndex: number]: boolean }>(
+    {}
+  );
+
+  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const isCompleted = isBlockCompleted(blockId);
 
   const handleAnswerChange = (blankIndex: number, value: string) => {
     if (submitted) return;
-    setAnswers(prev => ({ ...prev, [blankIndex]: value }));
+    setAnswers((prev) => ({ ...prev, [blankIndex]: value }));
   };
 
   const handleSubmit = () => {
     setSubmitted(true);
+
+    const { correct, total } = getTotalScore();
+    const maxScore = content.points || 10;
+    const score = content.allowPartialCredit
+      ? Math.floor((correct / total) * maxScore)
+      : correct === total
+        ? maxScore
+        : 0;
+
+    updateBlockProgress(blockId, {
+      completed: correct === total,
+      score,
+      maxScore,
+    });
   };
 
   const handleRetry = () => {
@@ -36,16 +67,16 @@ export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInB
   };
 
   const toggleHint = (blankIndex: number) => {
-    setShowHints(prev => ({ ...prev, [blankIndex]: !prev[blankIndex] }));
+    setShowHints((prev) => ({ ...prev, [blankIndex]: !prev[blankIndex] }));
   };
 
   const checkAnswer = (blankIndex: number): boolean => {
     const userAnswer = answers[blankIndex]?.trim() || "";
     const blank = content.blanks[blankIndex];
-    
+
     if (!blank) return false;
 
-    return blank.correctAnswers.some(correctAnswer => {
+    return blank.correctAnswers.some((correctAnswer) => {
       if (blank.caseSensitive) {
         return correctAnswer === userAnswer;
       }
@@ -66,12 +97,10 @@ export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInB
     const parts = [];
     let lastIndex = 0;
 
-    // Find all {{blank}} or {{answer}} markers
     const regex = /\{\{(blank|answer)\}\}/g;
     let match;
 
     while ((match = regex.exec(text)) !== null) {
-      // Add text before the blank
       if (match.index > lastIndex) {
         parts.push(
           <span key={`text-${parts.length}`}>
@@ -80,25 +109,28 @@ export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInB
         );
       }
 
-      // Add the blank input
       const currentBlankIndex = blankIndex;
       const status = getBlankStatus(currentBlankIndex);
       const blank = content.blanks[currentBlankIndex];
 
       parts.push(
-        <span key={`blank-${currentBlankIndex}`} className="inline-flex flex-col items-center gap-1 mx-1">
+        <span
+          key={`blank-${currentBlankIndex}`}
+          className="inline-flex flex-col items-center gap-1 mx-1"
+        >
           <div className="relative">
             <Input
               value={answers[currentBlankIndex] || ""}
-              onChange={(e) => handleAnswerChange(currentBlankIndex, e.target.value)}
+              onChange={(e) =>
+                handleAnswerChange(currentBlankIndex, e.target.value)
+              }
               disabled={submitted}
-              className={cn(
-                "min-w-[120px] text-center",
-                {
-                  "border-green-500 bg-green-50 dark:bg-green-950/30": status === "correct",
-                  "border-red-500 bg-red-50 dark:bg-red-950/30": status === "incorrect",
-                }
-              )}
+              className={cn("min-w-[120px] text-center", {
+                "border-green-500 bg-green-50 dark:bg-green-950/30":
+                  status === "correct",
+                "border-red-500 bg-red-50 dark:bg-red-950/30":
+                  status === "incorrect",
+              })}
               placeholder="___"
             />
             {submitted && (
@@ -134,20 +166,13 @@ export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInB
       blankIndex++;
     }
 
-    // Add remaining text
     if (lastIndex < text.length) {
       parts.push(
-        <span key={`text-${parts.length}`}>
-          {text.slice(lastIndex)}
-        </span>
+        <span key={`text-${parts.length}`}>{text.slice(lastIndex)}</span>
       );
     }
 
-    return (
-      <div className="text-base leading-relaxed">
-        {parts}
-      </div>
-    );
+    return <div className="text-base leading-relaxed">{parts}</div>;
   };
 
   const getTotalScore = () => {
@@ -173,10 +198,17 @@ export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInB
           <CardTitle className="text-lg flex items-center gap-2">
             <Square className="h-5 w-5" />
             Fill in the Blanks
+            {isCompleted && (
+              <Badge variant="secondary" className="ml-2">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Completed
+              </Badge>
+            )}
           </CardTitle>
           <Badge variant="secondary" className="gap-1">
             <Trophy className="h-3 w-3" />
-            {content.points} {content.points === 1 ? "point" : "points"}
+            {content.points || 10}{" "}
+            {(content.points || 10) === 1 ? "point" : "points"}
           </Badge>
         </div>
         {content.instructions && (
@@ -194,7 +226,9 @@ export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInB
           <div className="flex items-center gap-2">
             {submitted && score && (
               <Badge
-                variant={score.correct === score.total ? "default" : "destructive"}
+                variant={
+                  score.correct === score.total ? "default" : "destructive"
+                }
                 className="gap-1"
               >
                 {score.correct === score.total ? (
@@ -209,16 +243,17 @@ export function FillInBlankBlockRenderer({ content, blockId, lessonId }: FillInB
 
           <div className="flex items-center gap-2">
             {!submitted ? (
-              <Button 
-                onClick={handleSubmit} 
-                disabled={!canSubmit}
-              >
+              <Button onClick={handleSubmit} disabled={!canSubmit}>
                 Submit Answers
               </Button>
             ) : (
-              <Button variant="outline" onClick={handleRetry}>
-                Try Again
-              </Button>
+              <>
+                {content.allowPartialCredit !== false && !isCompleted && (
+                  <Button variant="outline" onClick={handleRetry}>
+                    Try Again
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
