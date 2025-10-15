@@ -119,6 +119,9 @@ function CourseContentInner({ data }: iAppProps) {
       }
 
       if (result.status === "success") {
+        // Trigger custom event to update gamification display
+        window.dispatchEvent(new Event("gamification-profile-update"));
+
         // 🎮 Show gamification toast
         if (result.gamification) {
           const { xpEarned, leveledUp, newLevel, newBadges } =

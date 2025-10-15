@@ -36,6 +36,9 @@ model User {
   xpTransactions            XPTransaction[]
   leaderboardEntries        LeaderboardEntry[]
   dailyChallengeCompletions DailyChallengeCompletion[]
+  friendships               Friendship[]               @relation("UserFriendships")
+  friendOf                  Friendship[]               @relation("FriendFriendships")
+  friendActivities          FriendActivity[]
 
   @@unique([email])
   @@map("user")
@@ -524,4 +527,46 @@ model DailyChallengeCompletion {
 
   @@unique([userId, challengeId])
   @@map("daily_challenge_completion")
+}
+
+model Friendship {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+
+  friendId String
+  friend   User   @relation("FriendFriendships", fields: [friendId], references: [id], onDelete: Cascade)
+
+  status FriendshipStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@index([status])
+  @@map("friendship")
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+model FriendActivity {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  activityType String // LESSON_COMPLETED, COURSE_COMPLETED, BADGE_EARNED, LEVEL_UP, etc.
+  description  String
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("friend_activity")
 }

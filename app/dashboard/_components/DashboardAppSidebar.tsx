@@ -11,10 +11,10 @@ import {
   IconSettings,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
-
 import { NavMain } from "@/components/sidebar/nav-main";
 import { NavSecondary } from "@/components/sidebar/nav-secondary";
 import { NavUser } from "@/components/sidebar/nav-user";
+import { UserGamificationDisplay } from "@/components/sidebar/user-gamification-display";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import Image from "next/image";
+import { Award, Trophy, Users } from "lucide-react";
 
 const data = {
   navMain: [
@@ -33,6 +34,21 @@ const data = {
       title: "Dashboard",
       url: "/dashboard",
       icon: IconDashboard,
+    },
+    {
+      title: "My Progress",
+      url: "/dashboard/profile",
+      icon: Trophy,
+    },
+    {
+      title: "Leaderboards",
+      url: "/dashboard/leaderboards",
+      icon: Award,
+    },
+    {
+      title: "Friends",
+      url: "/dashboard/friends",
+      icon: Users,
     },
   ],
   navClouds: [
@@ -122,6 +138,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <UserGamificationDisplay />
 
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
