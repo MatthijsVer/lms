@@ -39,6 +39,12 @@ model User {
   friendships               Friendship[]               @relation("UserFriendships")
   friendOf                  Friendship[]               @relation("FriendFriendships")
   friendActivities          FriendActivity[]
+  collabGroupsOwned         CollabGroup[]              @relation("CollabGroupOwner")
+  collabGroupMemberships    CollabGroupMember[]        @relation("CollabGroupMembers")
+  collabGoalsCreated        CollabGoal[]               @relation("CollabGoalCreatedBy")
+  collabGoalUpdates         CollabGoalUpdate[]
+  collabSessionsCreated     CollabSession[]            @relation("CollabSessionCreator")
+  collabSessionAttendances  CollabSessionAttendee[]
 
   @@unique([email])
   @@map("user")
@@ -569,4 +575,135 @@ model FriendActivity {
 
   @@index([userId, createdAt])
   @@map("friend_activity")
+}
+
+model CollabGroup {
+  id          String  @id @default(uuid())
+  name        String
+  slug        String  @unique
+  description String?
+  ownerId     String
+
+  owner    User                @relation("CollabGroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members  CollabGroupMember[]
+  goals    CollabGoal[]
+  sessions CollabSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("collab_group")
+}
+
+model CollabGroupMember {
+  id      String          @id @default(uuid())
+  groupId String
+  userId  String
+  role    CollabGroupRole @default(MEMBER)
+  joinedAt DateTime       @default(now())
+
+  group CollabGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User        @relation("CollabGroupMembers", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("collab_group_member")
+}
+
+model CollabGoal {
+  id           String          @id @default(uuid())
+  groupId      String
+  createdById  String?
+  title        String
+  description  String?
+  type         CollabGoalType
+  targetValue  Int
+  progressValue Int           @default(0)
+  dueDate      DateTime?
+
+  group      CollabGroup        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy  User?              @relation("CollabGoalCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updates    CollabGoalUpdate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("collab_goal")
+}
+
+model CollabGoalUpdate {
+  id       String @id @default(uuid())
+  goalId   String
+  userId   String
+  amount   Int
+  note     String?
+
+  goal CollabGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("collab_goal_update")
+}
+
+model CollabSession {
+  id             String               @id @default(uuid())
+  groupId        String
+  creatorId      String?
+  title          String
+  description    String?
+  scheduledAt    DateTime
+  durationMinutes Int?
+  status         CollabSessionStatus @default(SCHEDULED)
+  meetingLink    String?
+
+  group   CollabGroup           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User?                 @relation("CollabSessionCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  attendees CollabSessionAttendee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("collab_session")
+}
+
+model CollabSessionAttendee {
+  id         String @id @default(uuid())
+  sessionId  String
+  userId     String
+  response   CollabSessionResponse @default(PENDING)
+  respondedAt DateTime?
+
+  session CollabSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@map("collab_session_attendee")
+}
+
+enum CollabGroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum CollabGoalType {
+  XP
+  LESSONS_COMPLETED
+  COURSES_COMPLETED
+  STREAK
+  CUSTOM
+}
+
+enum CollabSessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum CollabSessionResponse {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
