@@ -343,6 +343,67 @@ export async function saveBlockProgress({
   return { success: true };
 }
 
+export async function resetLessonProgress({
+  lessonId,
+  slug,
+}: {
+  lessonId: string;
+  slug: string;
+}) {
+  const session = await requireUser();
+
+  try {
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: {
+        contentBlocks: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!lesson) {
+      return {
+        status: "error",
+        message: "Lesson not found",
+      };
+    }
+
+    const blockIds = lesson.contentBlocks.map((block) => block.id);
+
+    await prisma.$transaction([
+      prisma.contentBlockProgress.deleteMany({
+        where: {
+          userId: session.id,
+          contentBlockId: {
+            in: blockIds,
+          },
+        },
+      }),
+      prisma.lessonProgress.deleteMany({
+        where: {
+          userId: session.id,
+          lessonId,
+        },
+      }),
+    ]);
+
+    revalidatePath(`/dashboard/${slug}`);
+    revalidatePath(`/dashboard/${slug}/${lessonId}`);
+
+    return {
+      status: "success",
+      message: "Lesson progress reset",
+    };
+  } catch (error) {
+    console.error("Failed to reset lesson progress", error);
+    return {
+      status: "error",
+      message: "Failed to reset lesson progress",
+    };
+  }
+}
+
 // Helper function to check if course is complete
 async function checkCourseCompletion(userId: string, courseId: string) {
   try {

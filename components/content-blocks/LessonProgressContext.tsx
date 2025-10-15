@@ -39,6 +39,7 @@ type LessonProgressContextType = {
   areAllBlocksCompleted: (requiredBlocks: string[]) => boolean;
   resetProgress: () => void;
   getBlockProgress: (blockId: string) => BlockProgress | undefined;
+  resetSignal: number;
 };
 
 type LessonProgressProviderProps = {
@@ -80,6 +81,7 @@ export function LessonProgressProvider({
   const [blockProgress, setBlockProgress] = useState<Map<string, BlockProgress>>(
     initialMap
   );
+  const [resetSignal, setResetSignal] = useState(0);
 
   useEffect(() => {
     setBlockProgress(initialMap);
@@ -178,6 +180,7 @@ export function LessonProgressProvider({
 
   const resetProgress = useCallback(() => {
     setBlockProgress(new Map());
+    setResetSignal((prev) => prev + 1);
   }, []);
 
   return (
@@ -191,6 +194,7 @@ export function LessonProgressProvider({
         areAllBlocksCompleted,
         resetProgress,
         getBlockProgress,
+        resetSignal,
       }}
     >
       {children}
@@ -213,14 +217,20 @@ export function useBlockPersistentState<T extends Record<string, any>>(
   initialState: T,
   options?: { debounceMs?: number }
 ) {
-  const { getBlockProgress, updateBlockProgress } = useLessonProgress();
+  const { getBlockProgress, updateBlockProgress, resetSignal } =
+    useLessonProgress();
+  const baseStateRef = useRef<T>(initialState);
   const [state, setState] = useState<T>(() => {
     const stored = (getBlockProgress(blockId)?.metadata?.state ?? {}) as T;
     return {
-      ...initialState,
+      ...baseStateRef.current,
       ...stored,
     };
   });
+
+  useEffect(() => {
+    baseStateRef.current = initialState;
+  }, [initialState]);
 
   const hasHydratedRef = useRef(false);
 
@@ -229,12 +239,18 @@ export function useBlockPersistentState<T extends Record<string, any>>(
     const stored = (getBlockProgress(blockId)?.metadata?.state ?? {}) as T;
     if (stored && Object.keys(stored).length > 0) {
       setState((prev) => ({
-        ...prev,
+        ...baseStateRef.current,
         ...stored,
       }));
     }
     hasHydratedRef.current = true;
-  }, [blockId, getBlockProgress]);
+  }, [blockId, getBlockProgress, resetSignal]);
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    hasHydratedRef.current = false;
+    setState({ ...baseStateRef.current });
+  }, [resetSignal]);
 
   useEffect(() => {
     if (!hasHydratedRef.current) return;

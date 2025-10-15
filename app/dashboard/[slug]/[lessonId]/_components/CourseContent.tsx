@@ -5,9 +5,19 @@ import { RenderDescription } from "@/components/rich-text-editor/RenderDescripti
 import { Button } from "@/components/ui/button";
 import { tryCatch } from "@/hooks/try-catch";
 import { useConstructUrl } from "@/hooks/use-construct-url";
-import { BookIcon, CheckCircle, Sparkles, AlertCircle } from "lucide-react";
+import {
+  BookIcon,
+  CheckCircle,
+  Sparkles,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
 import { useTransition, useMemo, useCallback } from "react";
-import { markLessonComplete, saveBlockProgress } from "../actions";
+import {
+  markLessonComplete,
+  saveBlockProgress,
+  resetLessonProgress,
+} from "../actions";
 import { toast } from "sonner";
 import { useConfetti } from "@/hooks/use-confetti";
 import { ContentBlockRenderer } from "@/components/content-blocks/ContentBlockRenderer";
@@ -26,8 +36,12 @@ interface iAppProps {
 function CourseContentInner({ data }: iAppProps) {
   const [pending, startTransition] = useTransition();
   const { triggerConfetti } = useConfetti();
-  const { areAllBlocksCompleted, getTotalScore, getAllProgress } =
-    useLessonProgress();
+  const {
+    areAllBlocksCompleted,
+    getTotalScore,
+    getAllProgress,
+    resetProgress,
+  } = useLessonProgress();
 
   // Get all interactive block IDs (blocks that require completion)
   const interactiveBlockIds = useMemo(() => {
@@ -216,7 +230,7 @@ function CourseContentInner({ data }: iAppProps) {
         )}
       </div>
 
-      <div className="py-4 border-b mt-6">
+      <div className="py-4 border-b mt-6 flex flex-wrap items-center gap-3">
         {isAlreadyCompleted ? (
           <Button
             variant="outline"
@@ -226,23 +240,50 @@ function CourseContentInner({ data }: iAppProps) {
             Completed
           </Button>
         ) : (
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={onSubmit}
-              disabled={pending || !canComplete}
-            >
-              <CheckCircle className="size-4 text-green-500" />
-              Mark as Complete
-            </Button>
+          <Button
+            variant="outline"
+            onClick={onSubmit}
+            disabled={pending || !canComplete}
+          >
+            <CheckCircle className="size-4 text-green-500" />
+            Mark as Complete
+          </Button>
+        )}
 
-            {!canComplete && interactiveBlockIds.length > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <AlertCircle className="size-3" />
-                Complete all exercises to continue
-              </Badge>
-            )}
-          </div>
+        <Button
+          variant="outline"
+          disabled={pending}
+          onClick={() => {
+            startTransition(async () => {
+              const { data: result, error } = await tryCatch(
+                resetLessonProgress({
+                  lessonId: data.id,
+                  slug: data.Chapter.Course.slug,
+                })
+              );
+
+              if (error || !result || result.status !== "success") {
+                toast.error(
+                  result?.message ||
+                    "Could not reset lesson progress. Please try again."
+                );
+                return;
+              }
+
+              resetProgress();
+              toast.success("Lesson progress reset.");
+            });
+          }}
+        >
+          <RotateCcw className="size-4" />
+          Reset lesson
+        </Button>
+
+        {!canComplete && !isAlreadyCompleted && interactiveBlockIds.length > 0 && (
+          <Badge variant="secondary" className="gap-1">
+            <AlertCircle className="size-3" />
+            Complete all exercises to continue
+          </Badge>
         )}
       </div>
     </div>
