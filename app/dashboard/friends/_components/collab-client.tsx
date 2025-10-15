@@ -195,7 +195,7 @@ export function CollabClient({ overview }: CollabClientProps) {
                 </p>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-4 pt-0">
               {overview.groups.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/40 py-12 text-center text-muted-foreground">
                   <Users className="h-12 w-12 opacity-60" />
@@ -216,7 +216,7 @@ export function CollabClient({ overview }: CollabClientProps) {
                         key={group.id}
                         className="border border-border/60 bg-background/90 shadow-sm transition hover:border-primary/40 hover:shadow-lg"
                       >
-                        <CardContent className="flex flex-col gap-4 p-5">
+                        <CardContent className="flex flex-col gap-4 py-0 px-5">
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
                               <div className="flex items-center gap-2">
@@ -297,7 +297,7 @@ export function CollabClient({ overview }: CollabClientProps) {
                 Upcoming Sessions
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-4 pt-0">
               {overview.upcomingSessions.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground">
                   No upcoming sessions. Schedule a study jam and stay
