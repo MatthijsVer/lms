@@ -75,8 +75,13 @@ export async function getFriendComparison(friendUserId: string) {
     }
 
     // Rest of your code stays the same...
-    // Get recent XP transactions for both users
-    const [currentUserTransactions, friendTransactions] = await Promise.all([
+    // Get recent XP transactions for both users & activity feed in parallel
+    const [
+      currentUserTransactions,
+      friendTransactions,
+      friendActivities,
+      allBadges,
+    ] = await Promise.all([
       prisma.xPTransaction.findMany({
         where: { userId: session.id },
         orderBy: { createdAt: "desc" },
@@ -87,13 +92,12 @@ export async function getFriendComparison(friendUserId: string) {
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
+      FriendService.getFriendActivityFeed(session.id, 20),
+      prisma.badge.findMany({
+        where: { isActive: true },
+        orderBy: [{ order: "asc" }, { name: "asc" }],
+      }),
     ]);
-
-    // Get friend activity feed
-    const friendActivities = await FriendService.getFriendActivityFeed(
-      session.id,
-      20
-    );
 
     // Get shared courses (courses both are enrolled in)
     const [currentUserEnrollments, friendEnrollments] = await Promise.all([
@@ -282,6 +286,23 @@ export async function getFriendComparison(friendUserId: string) {
         (ub) => !friendBadgeIds.has(ub.badgeId)
       ) || [];
 
+    const allBadgeComparisons = allBadges.map((badge) => {
+      const currentUserBadge =
+        currentUserProfile?.userBadges.find(
+          (userBadge) => userBadge.badgeId === badge.id
+        ) || null;
+      const friendBadge =
+        friendProfile.userBadges.find(
+          (userBadge) => userBadge.badgeId === badge.id
+        ) || null;
+
+      return {
+        badge,
+        currentUserBadge,
+        friendBadge,
+      };
+    });
+
     return {
       currentUser: {
         ...currentUserProfile,
@@ -297,6 +318,7 @@ export async function getFriendComparison(friendUserId: string) {
         shared: sharedBadges,
         friendExclusive: friendExclusiveBadges,
         currentUserExclusive: currentUserExclusiveBadges,
+        all: allBadgeComparisons,
       },
       activities: friendActivities,
     };

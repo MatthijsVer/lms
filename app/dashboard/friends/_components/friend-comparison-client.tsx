@@ -15,6 +15,9 @@ import {
   Target,
   Zap,
   Calendar,
+  CheckCircle2,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 import { FriendComparison } from "@/app/data/friends/get-friend-comparison";
 import Link from "next/link";
@@ -43,11 +46,76 @@ export function FriendComparisonClient({
   const getFriendName = () =>
     friend.user.name || friend.user.email.split("@")[0];
 
+  const allBadgeComparisons = badges.all || [];
+  const totalBadgeCount = allBadgeComparisons.length;
+  const currentUserUnlockedCount = allBadgeComparisons.filter(
+    (entry) => !!entry.currentUserBadge
+  ).length;
+  const friendUnlockedCount = allBadgeComparisons.filter(
+    (entry) => !!entry.friendBadge
+  ).length;
+
+  const BadgeStatusBlock = ({
+    label,
+    badgeImageKey,
+    badgeName,
+    userBadge,
+  }: {
+    label: string;
+    badgeImageKey: string;
+    badgeName: string;
+    userBadge: {
+      earnedAt: string | Date;
+    } | null;
+  }) => {
+    const isUnlocked = !!userBadge;
+    const earnedAt = userBadge?.earnedAt
+      ? formatDistanceToNow(new Date(userBadge.earnedAt), {
+          addSuffix: true,
+        })
+      : null;
+
+    return (
+      <div className="flex border-t py-3 flex-col items-center gap-2 text-xs">
+        <span className="font-semibold">{label}</span>
+        <div className="relative w-16 h-16">
+          <Image
+            src={`/${badgeImageKey}`}
+            alt={`${badgeName} badge`}
+            fill
+            className={cn(
+              "object-contain transition-all",
+              isUnlocked ? "" : "grayscale opacity-30"
+            )}
+          />
+          {!isUnlocked && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Lock className="h-6 w-6 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1 text-[11px]">
+          {isUnlocked ? (
+            <>
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+              <span className="font-semibold text-emerald-600">Unlocked</span>
+            </>
+          ) : (
+            <>
+              <Lock className="h-3 w-3 text-muted-foreground" />
+              <span className="text-muted-foreground">Locked</span>
+            </>
+          )}
+        </div>
+        {earnedAt && (
+          <span className="text-[10px] text-muted-foreground">{earnedAt}</span>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div
-      className="min-h-screen relative bg-background"
-      onClick={() => console.log(badges)}
-    >
+    <div className="min-h-screen pb-5 relative bg-background">
       {/* Back Button - Fixed */}
       <div className="absolute top-4 left-4 z-50">
         <Button
@@ -434,96 +502,73 @@ export function FriendComparisonClient({
         )}
 
         {/* Badge Collections */}
-        {(badges.shared.length > 0 ||
-          badges.currentUserExclusive.length > 0 ||
-          badges.friendExclusive.length > 0) && (
-          <div className="grid md:grid-cols-3 gap-4">
-            {badges.currentUserExclusive.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Your Arsenal</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {badges.currentUserExclusive.length} unique
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-2">
-                    {badges.currentUserExclusive
-                      .slice(0, 8)
-                      .map((userBadge) => (
-                        <div
-                          key={userBadge.id}
-                          className="aspect-square relative"
-                        >
-                          <Image
-                            src={`/${userBadge.badge.imageKey}`}
-                            alt={userBadge.badge.name}
-                            fill
-                            className="object-contain"
-                          />
+        {totalBadgeCount > 0 && (
+          <Card className="p-0 border-none">
+            <CardHeader>
+              <div className="flex flex-col gap-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Badge Showdown
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  You: {currentUserUnlockedCount}/{totalBadgeCount} ·{" "}
+                  {getFriendName()}: {friendUnlockedCount}/{totalBadgeCount}
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {allBadgeComparisons.map((entry) => (
+                  <div
+                    key={entry.badge.id}
+                    className="flex flex-col gap-4 rounded-xl border bg-muted/20 p-4"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-sm">
+                          {entry.badge.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {entry.badge.description}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] uppercase tracking-wide"
+                          >
+                            {entry.badge.rarity}
+                          </Badge>
+                          {entry.badge.xpReward > 0 && (
+                            <Badge
+                              variant="outline"
+                              className="gap-1 text-[10px]"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              {entry.badge.xpReward} XP
+                            </Badge>
+                          )}
                         </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {badges.shared.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Mutual Badges</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {badges.shared.length} shared
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-2">
-                    {badges.shared.slice(0, 8).map((userBadge) => (
-                      <div
-                        key={userBadge.id}
-                        className="aspect-square relative"
-                      >
-                        <Image
-                          src={`/${userBadge.badge.imageKey}`}
-                          alt={userBadge.badge.name}
-                          fill
-                          className="object-contain"
-                        />
                       </div>
-                    ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <BadgeStatusBlock
+                        label="You"
+                        badgeImageKey={entry.badge.imageKey}
+                        badgeName={entry.badge.name}
+                        userBadge={entry.currentUserBadge}
+                      />
+                      <BadgeStatusBlock
+                        label={getFriendName()}
+                        badgeImageKey={entry.badge.imageKey}
+                        badgeName={entry.badge.name}
+                        userBadge={entry.friendBadge}
+                      />
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {badges.friendExclusive.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Their Arsenal</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {badges.friendExclusive.length} unique
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-2">
-                    {badges.friendExclusive.slice(0, 8).map((userBadge) => (
-                      <div
-                        key={userBadge.id}
-                        className="aspect-square relative"
-                      >
-                        <Image
-                          src={`/${userBadge.badge.imageKey}`}
-                          alt={userBadge.badge.name}
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Activity Feed */}
