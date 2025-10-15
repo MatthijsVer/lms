@@ -4,7 +4,10 @@ import { OrderingContent } from "@/lib/content-blocks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useLessonProgress } from "../LessonProgressContext";
+import {
+  useLessonProgress,
+  useBlockPersistentState,
+} from "../LessonProgressContext";
 import {
   ArrowUpDown,
   Trophy,
@@ -15,7 +18,7 @@ import {
   Timer,
   GripVertical,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
@@ -155,11 +158,30 @@ function SortableItem({
 export function OrderingBlockRenderer({
   content,
   blockId,
-  lessonId,
+  lessonId: _lessonId,
 }: OrderingBlockRendererProps) {
-  const [items, setItems] = useState<OrderingContent["items"]>([]);
-  const [submitted, setSubmitted] = useState(false);
-  const [showHints, setShowHints] = useState<{ [key: string]: boolean }>({});
+  void _lessonId;
+  const initialItems = useMemo(() => {
+    if (!content.items || content.items.length === 0) {
+      return [] as OrderingContent["items"];
+    }
+    return content.shuffleItems
+      ? [...content.items].sort(() => Math.random() - 0.5)
+      : [...content.items];
+  }, [content.items, content.shuffleItems]);
+
+  const [blockState, setBlockState] = useBlockPersistentState(blockId, {
+    items: initialItems,
+    submitted: false,
+    showHints: {} as Record<string, boolean>,
+  });
+
+  const items = useMemo(() => blockState.items ?? [], [blockState.items]);
+  const submitted = blockState.submitted ?? false;
+  const showHints = useMemo(
+    () => blockState.showHints ?? {},
+    [blockState.showHints]
+  );
   const [timeLeft, setTimeLeft] = useState<number | null>(
     content.timeLimit || null
   );
@@ -174,16 +196,14 @@ export function OrderingBlockRenderer({
     })
   );
 
-  // Initialize items (shuffle if enabled)
   useEffect(() => {
-    if (!content.items || content.items.length === 0) return;
-
-    const initialItems = content.shuffleItems
-      ? [...content.items].sort(() => Math.random() - 0.5)
-      : [...content.items];
-
-    setItems(initialItems);
-  }, [content.items, content.shuffleItems]);
+    if ((blockState.items ?? []).length === 0 && initialItems.length > 0) {
+      setBlockState((prev) => ({
+        ...prev,
+        items: initialItems,
+      }));
+    }
+  }, [blockState.items, initialItems, setBlockState]);
 
   // Timer effect
   useEffect(() => {
@@ -197,7 +217,7 @@ export function OrderingBlockRenderer({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [timerActive, timeLeft, submitted]);
+  }, [timerActive, timeLeft, submitted, handleSubmit]);
 
   const startTimer = () => {
     if (content.timeLimit && !timerActive) {
@@ -220,16 +240,27 @@ export function OrderingBlockRenderer({
 
     startTimer();
 
-    setItems((items) => {
-      const oldIndex = items.findIndex((item) => item.id === active.id);
-      const newIndex = items.findIndex((item) => item.id === over.id);
+    setBlockState((prev) => {
+      const currentItems = prev.items ?? [];
+      const oldIndex = currentItems.findIndex((item) => item.id === active.id);
+      const newIndex = currentItems.findIndex((item) => item.id === over.id);
 
-      return arrayMove(items, oldIndex, newIndex);
+      if (oldIndex === -1 || newIndex === -1) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        items: arrayMove(currentItems, oldIndex, newIndex),
+      };
     });
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = useCallback(() => {
+    setBlockState((prev) => ({
+      ...prev,
+      submitted: true,
+    }));
     setTimerActive(false);
 
     const score = getScore();
@@ -241,38 +272,56 @@ export function OrderingBlockRenderer({
           ? maxScore
           : 0;
 
-    updateBlockProgress(blockId, {
-      completed: score.percentage === 100,
-      score: earnedScore,
-      maxScore,
-    });
-  };
+    updateBlockProgress(
+      blockId,
+      {
+        completed: score.percentage === 100,
+        score: earnedScore,
+        maxScore,
+      },
+      { incrementAttempt: true }
+    );
+  }, [
+    blockId,
+    content.allowPartialCredit,
+    content.points,
+    getScore,
+    updateBlockProgress,
+    setBlockState,
+  ]);
 
   const handleRetry = () => {
-    // Reshuffle items
     const reshuffled = content.shuffleItems
-      ? [...content.items].sort(() => Math.random() - 0.5)
-      : [...content.items];
+      ? [...(content.items ?? [])].sort(() => Math.random() - 0.5)
+      : [...(content.items ?? [])];
 
-    setItems(reshuffled);
-    setSubmitted(false);
-    setShowHints({});
+    setBlockState({
+      items: reshuffled,
+      submitted: false,
+      showHints: {},
+    });
     setTimeLeft(content.timeLimit || null);
     setTimerActive(false);
   };
 
   const toggleHint = (itemId: string) => {
-    setShowHints((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
+    setBlockState((prev) => ({
+      ...prev,
+      showHints: {
+        ...(prev.showHints ?? {}),
+        [itemId]: !(prev.showHints ?? {})[itemId],
+      },
+    }));
   };
 
-  const checkItemPosition = (
-    item: OrderingContent["items"][0],
-    currentIndex: number
-  ): boolean => {
-    return item.correctPosition === currentIndex;
-  };
+  const checkItemPosition = useCallback(
+    (item: OrderingContent["items"][0], currentIndex: number): boolean => {
+      return item.correctPosition === currentIndex;
+    },
+    []
+  );
 
-  const getScore = () => {
+  const getScore = useCallback(() => {
     let correct = 0;
     items.forEach((item, index) => {
       if (checkItemPosition(item, index)) {
@@ -287,7 +336,6 @@ export function OrderingBlockRenderer({
         percentage: (correct / items.length) * 100,
       };
     } else {
-      // All or nothing scoring
       const allCorrect = correct === items.length;
       return {
         correct: allCorrect ? items.length : 0,
@@ -295,7 +343,7 @@ export function OrderingBlockRenderer({
         percentage: allCorrect ? 100 : 0,
       };
     }
-  };
+  }, [checkItemPosition, content.allowPartialCredit, items]);
 
   const canSubmit = items.length > 0;
   const score = submitted ? getScore() : null;

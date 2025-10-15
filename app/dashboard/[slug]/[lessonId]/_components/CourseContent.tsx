@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { tryCatch } from "@/hooks/try-catch";
 import { useConstructUrl } from "@/hooks/use-construct-url";
 import { BookIcon, CheckCircle, Sparkles, AlertCircle } from "lucide-react";
-import { useTransition, useMemo } from "react";
-import { markLessonComplete } from "../actions";
+import { useTransition, useMemo, useCallback } from "react";
+import { markLessonComplete, saveBlockProgress } from "../actions";
 import { toast } from "sonner";
 import { useConfetti } from "@/hooks/use-confetti";
 import { ContentBlockRenderer } from "@/components/content-blocks/ContentBlockRenderer";
@@ -15,6 +15,7 @@ import { LessonPointsDisplay } from "@/components/lesson/LessonPointsDisplay";
 import {
   LessonProgressProvider,
   useLessonProgress,
+  type BlockProgress,
 } from "@/components/content-blocks/LessonProgressContext";
 import { Badge } from "@/components/ui/badge";
 
@@ -249,8 +250,44 @@ function CourseContentInner({ data }: iAppProps) {
 }
 
 export function CourseContent({ data }: iAppProps) {
+  const initialProgress = useMemo<BlockProgress[]>(() => {
+    return (data.blockProgressRecords || []).map((record) => {
+      const metadata = (record.metadata as Record<string, any> | null) ?? {};
+      return {
+        blockId: record.blockId,
+        completed: record.completed ?? false,
+        score: metadata?.score ?? 0,
+        maxScore: metadata?.maxScore ?? 0,
+        attempts: metadata?.attempts ?? 0,
+        metadata,
+      } as BlockProgress;
+    });
+  }, [data.blockProgressRecords]);
+
+  const persistBlockProgress = useCallback(
+    async (progress: BlockProgress) => {
+      try {
+        await saveBlockProgress({
+          lessonId: data.id,
+          blockId: progress.blockId,
+          completed: progress.completed,
+          score: progress.score,
+          maxScore: progress.maxScore,
+          attempts: progress.attempts,
+          metadata: progress.metadata ?? {},
+        });
+      } catch (error) {
+        console.error("Failed to save block progress", error);
+      }
+    },
+    [data.id]
+  );
+
   return (
-    <LessonProgressProvider>
+    <LessonProgressProvider
+      initialProgress={initialProgress}
+      onPersist={persistBlockProgress}
+    >
       <CourseContentInner data={data} />
     </LessonProgressProvider>
   );

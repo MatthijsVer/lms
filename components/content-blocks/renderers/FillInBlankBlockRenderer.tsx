@@ -13,9 +13,12 @@ import {
   Lightbulb,
   HelpCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useLessonProgress } from "../LessonProgressContext";
+import {
+  useLessonProgress,
+  useBlockPersistentState,
+} from "../LessonProgressContext";
 
 interface FillInBlankBlockRendererProps {
   content: FillInBlankContent;
@@ -26,12 +29,20 @@ interface FillInBlankBlockRendererProps {
 export function FillInBlankBlockRenderer({
   content,
   blockId,
-  lessonId,
+  lessonId: _lessonId,
 }: FillInBlankBlockRendererProps) {
-  const [answers, setAnswers] = useState<{ [blankIndex: number]: string }>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [showHints, setShowHints] = useState<{ [blankIndex: number]: boolean }>(
-    {}
+  void _lessonId;
+  const [blockState, setBlockState] = useBlockPersistentState(blockId, {
+    answers: {} as Record<number, string>,
+    submitted: false,
+    showHints: {} as Record<number, boolean>,
+  });
+
+  const answers = useMemo(() => blockState.answers ?? {}, [blockState.answers]);
+  const submitted = blockState.submitted ?? false;
+  const showHints = useMemo(
+    () => blockState.showHints ?? {},
+    [blockState.showHints]
   );
 
   const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
@@ -39,11 +50,20 @@ export function FillInBlankBlockRenderer({
 
   const handleAnswerChange = (blankIndex: number, value: string) => {
     if (submitted) return;
-    setAnswers((prev) => ({ ...prev, [blankIndex]: value }));
+    setBlockState((prev) => ({
+      ...prev,
+      answers: {
+        ...(prev.answers ?? {}),
+        [blankIndex]: value,
+      },
+    }));
   };
 
   const handleSubmit = () => {
-    setSubmitted(true);
+    setBlockState((prev) => ({
+      ...prev,
+      submitted: true,
+    }));
 
     const { correct, total } = getTotalScore();
     const maxScore = content.points || 10;
@@ -53,21 +73,33 @@ export function FillInBlankBlockRenderer({
         ? maxScore
         : 0;
 
-    updateBlockProgress(blockId, {
-      completed: correct === total,
-      score,
-      maxScore,
-    });
+    updateBlockProgress(
+      blockId,
+      {
+        completed: correct === total,
+        score,
+        maxScore,
+      },
+      { incrementAttempt: true }
+    );
   };
 
   const handleRetry = () => {
-    setAnswers({});
-    setSubmitted(false);
-    setShowHints({});
+    setBlockState({
+      answers: {},
+      submitted: false,
+      showHints: {},
+    });
   };
 
   const toggleHint = (blankIndex: number) => {
-    setShowHints((prev) => ({ ...prev, [blankIndex]: !prev[blankIndex] }));
+    setBlockState((prev) => ({
+      ...prev,
+      showHints: {
+        ...(prev.showHints ?? {}),
+        [blankIndex]: !(prev.showHints ?? {})[blankIndex],
+      },
+    }));
   };
 
   const checkAnswer = (blankIndex: number): boolean => {
@@ -92,9 +124,9 @@ export function FillInBlankBlockRenderer({
   const renderTextWithBlanks = () => {
     if (!content.text) return null;
 
-    let text = content.text;
+    const text = content.text;
     let blankIndex = 0;
-    const parts = [];
+    const parts: ReactNode[] = [];
     let lastIndex = 0;
 
     const regex = /\{\{(blank|answer)\}\}/g;
@@ -177,7 +209,7 @@ export function FillInBlankBlockRenderer({
 
   const getTotalScore = () => {
     let correct = 0;
-    let total = content.blanks.length;
+    const total = content.blanks.length;
 
     content.blanks.forEach((_, index) => {
       if (checkAnswer(index)) {
@@ -188,7 +220,7 @@ export function FillInBlankBlockRenderer({
     return { correct, total };
   };
 
-  const canSubmit = Object.keys(answers).length > 0;
+  const canSubmit = Object.values(answers).some((value) => value?.trim());
   const score = submitted ? getTotalScore() : null;
 
   return (

@@ -47,8 +47,73 @@ export function CodeExerciseBlockRenderer({
   const runTokenRef = useRef(runToken);
   const runnerContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const lessonProgress = useLessonProgress();
+  const { updateBlockProgress, isBlockCompleted } = lessonProgress;
+  const getBlockProgress = lessonProgress.getBlockProgress ?? (() => undefined);
   const isCompleted = isBlockCompleted(blockId);
+
+  const blockProgress = useMemo(
+    () => getBlockProgress(blockId),
+    [getBlockProgress, blockId]
+  );
+  const storedState = useMemo(() => {
+    const metadata = blockProgress?.metadata;
+    if (metadata && typeof metadata === "object" && metadata !== null) {
+      const state = (metadata as Record<string, unknown>).state;
+      if (state && typeof state === "object") {
+        return state as {
+          userCode?: string;
+          runnerOutput?: RunnerLog[];
+          testResults?: TestOutcome[];
+          showSolution?: boolean;
+        };
+      }
+    }
+    return undefined;
+  }, [blockProgress]);
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (hydratedRef.current) return;
+
+    if (storedState) {
+      if (typeof storedState.userCode === "string") {
+        setUserCode(storedState.userCode);
+      }
+      if (Array.isArray(storedState.testResults)) {
+        setTestResults(storedState.testResults);
+      }
+      if (Array.isArray(storedState.runnerOutput)) {
+        setRunnerOutput(storedState.runnerOutput);
+      }
+      if (typeof storedState.showSolution === "boolean") {
+        setShowSolution(storedState.showSolution);
+      }
+    }
+
+    hydratedRef.current = true;
+  }, [storedState]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+
+    const metaState = {
+      userCode,
+      runnerOutput,
+      testResults,
+      showSolution,
+    };
+
+    const timeout = setTimeout(() => {
+      updateBlockProgress(blockId, {
+        metadata: {
+          state: metaState,
+        },
+      });
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  }, [userCode, runnerOutput, testResults, showSolution, blockId, updateBlockProgress]);
 
   useEffect(() => {
     runTokenRef.current = runToken;
@@ -75,11 +140,15 @@ export function CodeExerciseBlockRenderer({
       const maxScore = 20; // Code exercises are worth more points
       const score = Math.floor((passedCount / totalTests) * maxScore);
 
-      updateBlockProgress(blockId, {
-        completed: allPassed,
-        score,
-        maxScore,
-      });
+      updateBlockProgress(
+        blockId,
+        {
+          completed: allPassed,
+          score,
+          maxScore,
+        },
+        { incrementAttempt: true }
+      );
     }
   }, [testResults, isRunning, blockId, updateBlockProgress]);
 

@@ -254,6 +254,95 @@ export async function markLessonComplete({
   }
 }
 
+export async function saveBlockProgress({
+  lessonId,
+  blockId,
+  completed,
+  score,
+  maxScore,
+  attempts,
+  metadata,
+}: {
+  lessonId: string;
+  blockId: string;
+  completed?: boolean;
+  score?: number;
+  maxScore?: number;
+  attempts?: number;
+  metadata?: Record<string, any>;
+}) {
+  const session = await requireUser();
+
+  const block = await prisma.contentBlock.findUnique({
+    where: { id: blockId },
+    select: { id: true, type: true, lessonId: true },
+  });
+
+  if (!block || block.lessonId !== lessonId) {
+    throw new Error("Content block not found for this lesson");
+  }
+
+  const existingProgress = await prisma.contentBlockProgress.findUnique({
+    where: {
+      userId_contentBlockId: {
+        userId: session.id,
+        contentBlockId: blockId,
+      },
+    },
+  });
+
+  const previousMetadata = (existingProgress?.metadata ?? {}) as
+    | Record<string, any>
+    | null;
+
+  const mergedMetadata: Record<string, any> = {
+    ...(previousMetadata ?? {}),
+    ...(metadata ?? {}),
+  };
+
+  if (score !== undefined) {
+    mergedMetadata.score = score;
+  } else if (previousMetadata?.score !== undefined) {
+    mergedMetadata.score = previousMetadata.score;
+  }
+
+  if (maxScore !== undefined) {
+    mergedMetadata.maxScore = maxScore;
+  } else if (previousMetadata?.maxScore !== undefined) {
+    mergedMetadata.maxScore = previousMetadata.maxScore;
+  }
+
+  if (attempts !== undefined) {
+    mergedMetadata.attempts = attempts;
+  } else if (previousMetadata?.attempts !== undefined) {
+    mergedMetadata.attempts = previousMetadata.attempts;
+  }
+
+  mergedMetadata.lastUpdated = new Date().toISOString();
+
+  await prisma.contentBlockProgress.upsert({
+    where: {
+      userId_contentBlockId: {
+        userId: session.id,
+        contentBlockId: blockId,
+      },
+    },
+    create: {
+      userId: session.id,
+      contentBlockId: blockId,
+      type: block.type,
+      completed: completed ?? false,
+      metadata: mergedMetadata,
+    },
+    update: {
+      completed: completed ?? existingProgress?.completed ?? false,
+      metadata: mergedMetadata,
+    },
+  });
+
+  return { success: true };
+}
+
 // Helper function to check if course is complete
 async function checkCourseCompletion(userId: string, courseId: string) {
   try {

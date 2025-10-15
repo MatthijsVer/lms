@@ -103,12 +103,20 @@ export async function getLessonContent(lessonId: string) {
     };
   });
 
+  const blockProgressRecords = blockProgress.map((progress) => ({
+    blockId: progress.contentBlockId,
+    type: progress.type,
+    completed: progress.completed,
+    metadata: progress.metadata,
+  }));
+
   return {
     ...lesson,
     userProgress: {
       totalEarned,
       blockScores,
     },
+    blockProgressRecords,
   };
 }
 

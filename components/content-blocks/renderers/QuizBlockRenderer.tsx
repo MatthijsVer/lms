@@ -11,9 +11,12 @@ import {
   Trophy,
   Lightbulb,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { useLessonProgress } from "../LessonProgressContext";
+import {
+  useLessonProgress,
+  useBlockPersistentState,
+} from "../LessonProgressContext";
 
 interface QuizBlockRendererProps {
   content: QuizContent;
@@ -24,11 +27,21 @@ interface QuizBlockRendererProps {
 export function QuizBlockRenderer({
   content,
   blockId,
-  lessonId,
+  lessonId: _lessonId,
 }: QuizBlockRendererProps) {
-  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
-  const [submitted, setSubmitted] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
+  void _lessonId;
+  const [blockState, setBlockState] = useBlockPersistentState(blockId, {
+    selectedAnswers: [] as number[],
+    submitted: false,
+    showExplanation: false,
+  });
+
+  const selectedAnswers = useMemo(
+    () => blockState.selectedAnswers ?? [],
+    [blockState.selectedAnswers]
+  );
+  const submitted = blockState.submitted ?? false;
+  const showExplanation = blockState.showExplanation ?? false;
 
   const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
   const isCompleted = isBlockCompleted(blockId);
@@ -39,36 +52,53 @@ export function QuizBlockRenderer({
     const allowMultiple = content.options.filter((o) => o.isCorrect).length > 1;
 
     if (allowMultiple) {
-      setSelectedAnswers((prev) =>
-        prev.includes(optionIndex)
-          ? prev.filter((i) => i !== optionIndex)
-          : [...prev, optionIndex]
-      );
+      setBlockState((prev) => {
+        const current = prev.selectedAnswers ?? [];
+        const next = current.includes(optionIndex)
+          ? current.filter((i) => i !== optionIndex)
+          : [...current, optionIndex];
+        return {
+          ...prev,
+          selectedAnswers: next,
+        };
+      });
     } else {
-      setSelectedAnswers([optionIndex]);
+      setBlockState((prev) => ({
+        ...prev,
+        selectedAnswers: [optionIndex],
+      }));
     }
   };
 
   const handleSubmit = () => {
-    setSubmitted(true);
-    setShowExplanation(true);
+    setBlockState((prev) => ({
+      ...prev,
+      submitted: true,
+      showExplanation: true,
+    }));
 
     const correct = isCorrect();
     const maxScore = content.points || 10;
     const score = correct ? maxScore : 0;
 
     // Update progress in context
-    updateBlockProgress(blockId, {
-      completed: correct,
-      score,
-      maxScore,
-    });
+    updateBlockProgress(
+      blockId,
+      {
+        completed: correct,
+        score,
+        maxScore,
+      },
+      { incrementAttempt: true }
+    );
   };
 
   const handleRetry = () => {
-    setSelectedAnswers([]);
-    setSubmitted(false);
-    setShowExplanation(false);
+    setBlockState({
+      selectedAnswers: [],
+      submitted: false,
+      showExplanation: false,
+    });
   };
 
   const getCorrectAnswers = () => {

@@ -13,9 +13,12 @@ import {
   XCircle,
   Timer,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { useLessonProgress } from "../LessonProgressContext";
+import {
+  useLessonProgress,
+  useBlockPersistentState,
+} from "../LessonProgressContext";
 
 interface MatchingBlockRendererProps {
   content: MatchingContent;
@@ -36,13 +39,41 @@ interface Point {
 export function MatchingBlockRenderer({
   content,
   blockId,
-  lessonId,
+  lessonId: _lessonId,
 }: MatchingBlockRendererProps) {
-  const [connections, setConnections] = useState<Connection[]>([]);
+  void _lessonId;
+  const pairs = content.pairs || [];
+  const initialRightOrder = useMemo(() => {
+    if (content.shuffleItems) {
+      const indices = Array.from({ length: pairs.length }, (_, i) => i);
+      return indices.sort(() => Math.random() - 0.5);
+    }
+    return Array.from({ length: pairs.length }, (_, i) => i);
+  }, [content.shuffleItems, pairs.length]);
+
+  const [blockState, setBlockState] = useBlockPersistentState(blockId, {
+    connections: [] as Connection[],
+    submitted: false,
+    showHints: {} as Record<string, boolean>,
+    rightOrderMap: initialRightOrder,
+  });
+
+  const connections = useMemo(
+    () => blockState.connections ?? [],
+    [blockState.connections]
+  );
+  const submitted = blockState.submitted ?? false;
+  const showHints = useMemo(
+    () => blockState.showHints ?? {},
+    [blockState.showHints]
+  );
+  const rightOrderMap = useMemo(() => {
+    const stored = blockState.rightOrderMap ?? [];
+    return stored.length === pairs.length ? stored : initialRightOrder;
+  }, [blockState.rightOrderMap, initialRightOrder, pairs.length]);
+
   const [selectedLeft, setSelectedLeft] = useState<number | null>(null);
   const [hoveredRight, setHoveredRight] = useState<number | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [showHints, setShowHints] = useState<{ [key: string]: boolean }>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(
     content.timeLimit || null
   );
@@ -56,27 +87,19 @@ export function MatchingBlockRenderer({
   const leftRefs = useRef<(HTMLDivElement | null)[]>([]);
   const rightRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const pairs = content.pairs || [];
-  const [rightOrderMap, setRightOrderMap] = useState<number[]>(() => {
-    if (content.shuffleItems) {
-      const indices = Array.from({ length: pairs.length }, (_, i) => i);
-      return indices.sort(() => Math.random() - 0.5);
-    }
-    return Array.from({ length: pairs.length }, (_, i) => i);
-  });
-
   useEffect(() => {
-    if (!timerActive || !timeLeft || timeLeft <= 0 || submitted) return;
-
-    const timer = setTimeout(() => {
-      setTimeLeft(timeLeft - 1);
-      if (timeLeft - 1 <= 0) {
-        handleSubmit();
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [timerActive, timeLeft, submitted]);
+    if ((blockState.rightOrderMap ?? []).length === 0 && pairs.length > 0) {
+      setBlockState((prev) => ({
+        ...prev,
+        rightOrderMap: initialRightOrder,
+      }));
+    }
+  }, [
+    blockState.rightOrderMap,
+    initialRightOrder,
+    pairs.length,
+    setBlockState,
+  ]);
 
   const startTimer = () => {
     if (content.timeLimit && !timerActive) {
@@ -109,18 +132,48 @@ export function MatchingBlockRenderer({
         conn.leftIndex === selectedLeft || conn.rightIndex === rightIndex
     );
 
+    let updatedConnections = connections;
+
     if (existingConnectionIndex !== -1) {
-      setConnections(
-        connections.filter((_, i) => i !== existingConnectionIndex)
+      updatedConnections = connections.filter(
+        (_, i) => i !== existingConnectionIndex
       );
     }
 
-    setConnections([...connections, { leftIndex: selectedLeft, rightIndex }]);
+    const newConnections = [
+      ...updatedConnections,
+      { leftIndex: selectedLeft, rightIndex },
+    ];
+    setBlockState((prev) => ({
+      ...prev,
+      connections: newConnections,
+    }));
     setSelectedLeft(null);
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const checkConnection = useCallback(
+    (conn: Connection): boolean => {
+      const actualRightIndex = rightOrderMap[conn.rightIndex];
+      return conn.leftIndex === actualRightIndex;
+    },
+    [rightOrderMap]
+  );
+
+  const getScore = useCallback(() => {
+    let correct = 0;
+    connections.forEach((conn) => {
+      if (checkConnection(conn)) {
+        correct++;
+      }
+    });
+    return { correct, total: pairs.length };
+  }, [checkConnection, connections, pairs.length]);
+
+  const handleSubmit = useCallback(() => {
+    setBlockState((prev) => ({
+      ...prev,
+      submitted: true,
+    }));
     setTimerActive(false);
     setSelectedLeft(null);
 
@@ -133,43 +186,70 @@ export function MatchingBlockRenderer({
           ? maxScore
           : 0;
 
-    updateBlockProgress(blockId, {
-      completed: score.correct === score.total,
-      score: earnedScore,
-      maxScore,
-    });
-  };
+    updateBlockProgress(
+      blockId,
+      {
+        completed: score.correct === score.total,
+        score: earnedScore,
+        maxScore,
+      },
+      { incrementAttempt: true }
+    );
+  }, [
+    blockId,
+    content.allowPartialCredit,
+    content.points,
+    getScore,
+    updateBlockProgress,
+    setBlockState,
+  ]);
 
   const handleRetry = () => {
-    setConnections([]);
-    setSubmitted(false);
+    const resetOrder = content.shuffleItems
+      ? Array.from({ length: pairs.length }, (_, i) => i).sort(
+          () => Math.random() - 0.5
+        )
+      : initialRightOrder;
+
+    setBlockState({
+      connections: [],
+      submitted: false,
+      showHints: {},
+      rightOrderMap: resetOrder,
+    });
     setSelectedLeft(null);
-    setShowHints({});
     setTimeLeft(content.timeLimit || null);
     setTimerActive(false);
-    if (content.shuffleItems) {
-      const indices = Array.from({ length: pairs.length }, (_, i) => i);
-      setRightOrderMap(indices.sort(() => Math.random() - 0.5));
-    }
   };
+
+  useEffect(() => {
+    if (!timerActive || !timeLeft || timeLeft <= 0 || submitted) return;
+
+    const timer = setTimeout(() => {
+      setTimeLeft((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const next = prev - 1;
+        if (next <= 0) {
+          handleSubmit();
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [timerActive, timeLeft, submitted, handleSubmit]);
 
   const toggleHint = (pairId: string) => {
-    setShowHints((prev) => ({ ...prev, [pairId]: !prev[pairId] }));
-  };
-
-  const checkConnection = (conn: Connection): boolean => {
-    const actualRightIndex = rightOrderMap[conn.rightIndex];
-    return conn.leftIndex === actualRightIndex;
-  };
-
-  const getScore = () => {
-    let correct = 0;
-    connections.forEach((conn) => {
-      if (checkConnection(conn)) {
-        correct++;
-      }
-    });
-    return { correct, total: pairs.length };
+    setBlockState((prev) => ({
+      ...prev,
+      showHints: {
+        ...(prev.showHints ?? {}),
+        [pairId]: !(prev.showHints ?? {})[pairId],
+      },
+    }));
   };
 
   const getConnectionPoints = (

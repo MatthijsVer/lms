@@ -15,13 +15,12 @@ import {
   Target,
   Tag,
 } from "lucide-react";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -36,9 +35,7 @@ import {
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  rectSortingStrategy,
   useSortable,
-  verticalListSortingStrategy,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -59,7 +56,6 @@ interface TokenPlacement {
 interface SortableTokenProps {
   id: string;
   token: DragDropContent["tokens"][0];
-  placement: TokenPlacement;
   submitted: boolean;
   isCorrect: boolean;
   showHints: boolean;
@@ -71,7 +67,6 @@ interface SortableTokenProps {
 const SortableToken = ({
   id,
   token,
-  placement,
   submitted,
   isCorrect,
   showHints,
@@ -242,7 +237,6 @@ const DroppableTarget = ({
       >
         <div className="flex flex-wrap gap-2 min-h-[60px]">
           {tokensInTarget.map((token) => {
-            const placement = placements.find((p) => p.tokenId === token.id)!;
             const isCorrect = submitted && checkTokenPlacement(token.id, id);
 
             return (
@@ -250,7 +244,6 @@ const DroppableTarget = ({
                 key={token.id}
                 id={token.id}
                 token={token}
-                placement={placement}
                 submitted={submitted}
                 isCorrect={isCorrect}
                 showHints={allowHints}
@@ -335,14 +328,11 @@ const TokenBank = ({
       >
         <div className="flex flex-wrap gap-2 min-h-[60px]">
           {shuffledTokens.map((token) => {
-            const placement = placements.find((p) => p.tokenId === token.id)!;
-
             return (
               <SortableToken
                 key={token.id}
                 id={token.id}
                 token={token}
-                placement={placement}
                 submitted={submitted}
                 isCorrect={false}
                 showHints={false}
@@ -367,8 +357,9 @@ const TokenBank = ({
 export function DragDropBlockRenderer({
   content,
   blockId,
-  lessonId,
+  lessonId: _lessonId,
 }: DragDropBlockRendererProps) {
+  void _lessonId;
   const [placements, setPlacements] = useState<TokenPlacement[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [showHints, setShowHints] = useState<{ [key: string]: boolean }>({});
@@ -378,8 +369,68 @@ export function DragDropBlockRenderer({
   const [timerActive, setTimerActive] = useState(false);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const timerRef = useRef<NodeJS.Timeout>();
-  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const lessonProgress = useLessonProgress();
+  const { updateBlockProgress, isBlockCompleted } = lessonProgress;
+  const getBlockProgress = lessonProgress.getBlockProgress ?? (() => undefined);
   const isCompleted = isBlockCompleted(blockId);
+
+  const blockProgress = useMemo(
+    () => getBlockProgress(blockId),
+    [getBlockProgress, blockId]
+  );
+  const storedState = useMemo(() => {
+    const metadata = blockProgress?.metadata;
+    if (metadata && typeof metadata === "object" && metadata !== null) {
+      const state = (metadata as Record<string, unknown>).state;
+      if (state && typeof state === "object") {
+        return state as {
+          placements?: TokenPlacement[];
+          submitted?: boolean;
+          showHints?: Record<string, boolean>;
+        };
+      }
+    }
+    return undefined;
+  }, [blockProgress]);
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (hydratedRef.current) return;
+
+    if (storedState) {
+      if (Array.isArray(storedState.placements)) {
+        setPlacements(storedState.placements);
+      }
+      if (typeof storedState.submitted === "boolean") {
+        setSubmitted(storedState.submitted);
+      }
+      if (storedState.showHints) {
+        setShowHints(storedState.showHints);
+      }
+    }
+
+    hydratedRef.current = true;
+  }, [storedState]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+
+    const metaState = {
+      placements,
+      submitted,
+      showHints,
+    };
+
+    const timeout = setTimeout(() => {
+      updateBlockProgress(blockId, {
+        metadata: {
+          state: metaState,
+        },
+      });
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [placements, submitted, showHints, blockId, updateBlockProgress]);
 
   // Improved sensors with better touch and mouse handling
   const sensors = useSensors(
@@ -403,13 +454,21 @@ export function DragDropBlockRenderer({
   useEffect(() => {
     if (!content.tokens || content.tokens.length === 0) return;
 
+    if (
+      hydratedRef.current &&
+      storedState?.placements &&
+      storedState.placements.length > 0
+    ) {
+      return;
+    }
+
     const initialPlacements: TokenPlacement[] = content.tokens.map((token) => ({
       tokenId: token.id,
       targetId: null,
     }));
 
     setPlacements(initialPlacements);
-  }, [content.tokens]);
+  }, [content.tokens, storedState]);
 
   // Timer effect with cleanup
   useEffect(() => {
@@ -634,11 +693,15 @@ export function DragDropBlockRenderer({
           ? maxScore
           : 0;
 
-    updateBlockProgress(blockId, {
-      completed: score.percentage === 100,
-      score: earnedScore,
-      maxScore,
-    });
+    updateBlockProgress(
+      blockId,
+      {
+        completed: score.percentage === 100,
+        score: earnedScore,
+        maxScore,
+      },
+      { incrementAttempt: true }
+    );
   }, [
     blockId,
     content.allowPartialCredit,

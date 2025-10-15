@@ -16,13 +16,12 @@ import {
   XCircle,
   HelpCircle,
 } from "lucide-react";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -63,13 +62,6 @@ const eventTypeIcons = {
   event: Calendar,
   deadline: AlertCircle,
   achievement: Trophy,
-};
-
-const eventTypeColors = {
-  milestone: "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30",
-  event: "border-blue-500 bg-blue-50 dark:bg-blue-950/30",
-  deadline: "border-red-500 bg-red-50 dark:bg-red-950/30",
-  achievement: "border-green-500 bg-green-50 dark:bg-green-950/30",
 };
 
 interface SortableTimelineItemProps {
@@ -266,14 +258,75 @@ const SortableTimelineItem = ({
 export function TimelineBlockRenderer({
   content,
   blockId,
-  lessonId,
+  lessonId: _lessonId,
 }: TimelineBlockRendererProps) {
+  void _lessonId;
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [showHints, setShowHints] = useState<{ [key: string]: boolean }>({});
   const [activeId, setActiveId] = useState<string | null>(null);
-  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
+  const lessonProgress = useLessonProgress();
+  const { updateBlockProgress, isBlockCompleted } = lessonProgress;
+  const getBlockProgress = lessonProgress.getBlockProgress ?? (() => undefined);
   const isCompleted = isBlockCompleted(blockId);
+
+  const blockProgress = useMemo(
+    () => getBlockProgress(blockId),
+    [getBlockProgress, blockId]
+  );
+  const storedState = useMemo(() => {
+    const metadata = blockProgress?.metadata;
+    if (metadata && typeof metadata === "object" && metadata !== null) {
+      const state = (metadata as Record<string, unknown>).state;
+      if (state && typeof state === "object") {
+        return state as {
+          items?: TimelineItem[];
+          submitted?: boolean;
+          showHints?: Record<string, boolean>;
+        };
+      }
+    }
+    return undefined;
+  }, [blockProgress]);
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (hydratedRef.current) return;
+
+    if (storedState) {
+      if (Array.isArray(storedState.items)) {
+        setTimelineItems(storedState.items);
+      }
+      if (typeof storedState.submitted === "boolean") {
+        setSubmitted(storedState.submitted);
+      }
+      if (storedState.showHints) {
+        setShowHints(storedState.showHints);
+      }
+    }
+
+    hydratedRef.current = true;
+  }, [storedState]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+
+    const metaState = {
+      items: timelineItems,
+      submitted,
+      showHints,
+    };
+
+    const timeout = setTimeout(() => {
+      updateBlockProgress(blockId, {
+        metadata: {
+          state: metaState,
+        },
+      });
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [timelineItems, submitted, showHints, blockId, updateBlockProgress]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -292,30 +345,34 @@ export function TimelineBlockRenderer({
     })
   );
 
-  // Initialize timeline items with shuffled order
+  // Initialize timeline items with shuffled order (when no stored state)
   useEffect(() => {
     if (!content.events || content.events.length === 0) return;
 
-    // Create timeline items with correct order information
+    if (
+      hydratedRef.current &&
+      storedState?.items &&
+      storedState.items.length > 0
+    ) {
+      return;
+    }
+
     const items: TimelineItem[] = content.events.map((event, index) => ({
       ...event,
       currentPosition: index,
       originalPosition: index,
     }));
 
-    // Sort by date to determine correct chronological order
     const sortedByDate = [...items].sort((a, b) => {
       const dateA = new Date(a.date);
       const dateB = new Date(b.date);
       return dateA.getTime() - dateB.getTime();
     });
 
-    // Assign correct positions based on chronological order
     sortedByDate.forEach((item, index) => {
       item.originalPosition = index;
     });
 
-    // Shuffle for the exercise (if shuffle is enabled, which is default)
     if (content.shuffleEvents !== false) {
       const shuffled = [...items].sort(() => Math.random() - 0.5);
       setTimelineItems(
@@ -324,7 +381,7 @@ export function TimelineBlockRenderer({
     } else {
       setTimelineItems(items);
     }
-  }, [content.events, content.shuffleEvents]);
+  }, [content.events, content.shuffleEvents, storedState]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -390,11 +447,15 @@ export function TimelineBlockRenderer({
             ? maxScore
             : 0;
 
-      updateBlockProgress(blockId, {
-        completed: score.percentage === 100,
-        score: earnedScore,
-        maxScore,
-      });
+      updateBlockProgress(
+        blockId,
+        {
+          completed: score.percentage === 100,
+          score: earnedScore,
+          maxScore,
+        },
+        { incrementAttempt: true }
+      );
     }
   }, [
     blockId,
