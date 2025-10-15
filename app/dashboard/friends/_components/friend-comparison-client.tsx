@@ -45,13 +45,13 @@ export function FriendComparisonClient({
 
   return (
     <div
-      className="min-h-screen bg-background"
+      className="min-h-screen relative bg-background"
       onClick={() => console.log(badges)}
     >
       {/* Back Button - Fixed */}
-      <div className="fixed top-4 left-4 z-50">
+      <div className="absolute top-4 left-4 z-50">
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
           asChild
           className="bg-background/80 backdrop-blur"
