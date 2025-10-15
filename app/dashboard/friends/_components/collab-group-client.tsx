@@ -69,7 +69,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
   const [sessionTitle, setSessionTitle] = useState("");
   const [sessionDescription, setSessionDescription] = useState("");
   const [sessionScheduledAt, setSessionScheduledAt] = useState("");
-  const [sessionDuration, setSessionDuration] = useState<number | undefined>(60);
+  const [sessionDuration, setSessionDuration] = useState<number | undefined>(
+    60
+  );
   const [sessionMeetingLink, setSessionMeetingLink] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,7 +169,10 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
     });
   };
 
-  const handleSessionResponse = (sessionId: string, response: "ACCEPTED" | "DECLINED") => {
+  const handleSessionResponse = (
+    sessionId: string,
+    response: "ACCEPTED" | "DECLINED"
+  ) => {
     startTransition(async () => {
       try {
         await respondToCollabSession({
@@ -225,7 +230,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
           userId: user.id,
           role: "MEMBER",
         });
-        toast.success(`${user.name || user.email.split("@")[0]} added to the hub.`);
+        toast.success(
+          `${user.name || user.email.split("@")[0]} added to the hub.`
+        );
         setSearchQuery("");
         setSearchResults([]);
         router.refresh();
@@ -237,22 +244,28 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
   };
 
   const upcomingSessions = groupData.sessions.filter(
-    (session) => session.status === "SCHEDULED" && new Date(session.scheduledAt) >= new Date()
+    (session) =>
+      session.status === "SCHEDULED" &&
+      new Date(session.scheduledAt) >= new Date()
   );
   const pastSessions = groupData.sessions.filter(
-    (session) => session.status !== "SCHEDULED" || new Date(session.scheduledAt) < new Date()
+    (session) =>
+      session.status !== "SCHEDULED" ||
+      new Date(session.scheduledAt) < new Date()
   );
 
   return (
     <div className="relative min-h-screen bg-background">
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/5 via-background to-muted/30" />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
-        <Card className="border border-border/60 bg-background/80 shadow-lg backdrop-blur">
+      <div className="mx-auto flex w-full flex-col gap-6 px-4 sm:px-6 py-6">
+        <Card className="border py-0 border-border/60 bg-background/80 shadow-lg backdrop-blur">
           <CardContent className="flex flex-col gap-6 p-6 sm:p-8">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight">{groupData.name}</h1>
+                  <h1 className="text-3xl font-bold tracking-tight">
+                    {groupData.name}
+                  </h1>
                   <Badge variant="secondary" className="uppercase">
                     {groupData.members.length} teammates
                   </Badge>
@@ -261,7 +274,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                   </Badge>
                 </div>
                 {groupData.description && (
-                  <p className="max-w-2xl text-sm text-muted-foreground">{groupData.description}</p>
+                  <p className="max-w-2xl text-sm text-muted-foreground">
+                    {groupData.description}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   Created{" "}
@@ -280,22 +295,34 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
 
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-border/60 bg-muted/40 p-4">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Members</p>
-                <p className="mt-1 text-2xl font-bold">{groupData.members.length}</p>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  Members
+                </p>
+                <p className="mt-1 text-2xl font-bold">
+                  {groupData.members.length}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   Collaborators linked to this learning hub.
                 </p>
               </div>
               <div className="rounded-xl border border-border/60 bg-muted/40 p-4">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Goals</p>
-                <p className="mt-1 text-2xl font-bold">{groupData.goals.length}</p>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  Goals
+                </p>
+                <p className="mt-1 text-2xl font-bold">
+                  {groupData.goals.length}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   Shared targets to keep the squad aligned.
                 </p>
               </div>
               <div className="rounded-xl border border-border/60 bg-muted/40 p-4">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Sessions</p>
-                <p className="mt-1 text-2xl font-bold">{upcomingSessions.length}</p>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  Sessions
+                </p>
+                <p className="mt-1 text-2xl font-bold">
+                  {upcomingSessions.length}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   Scheduled jams waiting on your calendar.
                 </p>
@@ -306,7 +333,7 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
 
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           <div className="space-y-6">
-            <Card className="border border-border/60 bg-background/80 shadow-sm backdrop-blur">
+            <Card className="border py-4 border-border/60 bg-background/80 shadow-sm backdrop-blur">
               <CardHeader className="flex flex-col gap-2 border-b border-border/60 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Users className="h-5 w-5 text-primary" />
@@ -330,7 +357,7 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="space-y-4 pt-0">
                 {canManage && searchResults.length > 0 && (
                   <div className="space-y-3 rounded-xl border border-border/60 bg-muted/40 p-4">
                     {searchResults.map((result) => (
@@ -345,14 +372,18 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               alt={result.name || result.email}
                             />
                             <AvatarFallback>
-                              {(result.name || result.email).charAt(0).toUpperCase()}
+                              {(result.name || result.email)
+                                .charAt(0)
+                                .toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="space-y-1">
                             <p className="font-medium">
                               {result.name || result.email.split("@")[0]}
                             </p>
-                            <p className="text-xs text-muted-foreground">{result.email}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {result.email}
+                            </p>
                           </div>
                         </div>
                         <Button
@@ -387,14 +418,19 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                             alt={member.user.name || member.user.email}
                           />
                           <AvatarFallback>
-                            {(member.user.name || member.user.email).charAt(0).toUpperCase()}
+                            {(member.user.name || member.user.email)
+                              .charAt(0)
+                              .toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-semibold">
-                            {member.user.name || member.user.email.split("@")[0]}
+                            {member.user.name ||
+                              member.user.email.split("@")[0]}
                           </p>
-                          <p className="text-xs text-muted-foreground">{member.user.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {member.user.email}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -408,22 +444,24 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                           })}
                         </span>
                       </div>
-                      {canManage && member.userId !== currentUserId && member.role !== "OWNER" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2 text-destructive hover:bg-destructive/10"
-                          disabled={isPending}
-                          onClick={() => handleRemoveMember(member.userId)}
-                        >
-                          {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <UserMinus className="h-4 w-4" />
-                          )}
-                          Remove
-                        </Button>
-                      )}
+                      {canManage &&
+                        member.userId !== currentUserId &&
+                        member.role !== "OWNER" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-destructive hover:bg-destructive/10"
+                            disabled={isPending}
+                            onClick={() => handleRemoveMember(member.userId)}
+                          >
+                            {isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserMinus className="h-4 w-4" />
+                            )}
+                            Remove
+                          </Button>
+                        )}
                     </div>
                   ))}
                 </div>
@@ -437,7 +475,10 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                   Shared Goals
                 </CardTitle>
                 {canManage && (
-                  <Dialog open={isGoalDialogOpen} onOpenChange={setIsGoalDialogOpen}>
+                  <Dialog
+                    open={isGoalDialogOpen}
+                    onOpenChange={setIsGoalDialogOpen}
+                  >
                     <DialogTrigger asChild>
                       <Button size="sm" className="gap-2">
                         <Plus className="h-4 w-4" />
@@ -448,7 +489,8 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                       <DialogHeader>
                         <DialogTitle>Create a shared goal</DialogTitle>
                         <DialogDescription>
-                          Define the next milestone your collaboration will aim for.
+                          Define the next milestone your collaboration will aim
+                          for.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 pt-4">
@@ -460,7 +502,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                         <Textarea
                           placeholder="Describe what success looks like."
                           value={goalDescription}
-                          onChange={(event) => setGoalDescription(event.target.value)}
+                          onChange={(event) =>
+                            setGoalDescription(event.target.value)
+                          }
                         />
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="space-y-2">
@@ -472,7 +516,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               min={1}
                               value={goalTarget}
                               onChange={(event) =>
-                                setGoalTarget(Math.max(1, Number(event.target.value)))
+                                setGoalTarget(
+                                  Math.max(1, Number(event.target.value))
+                                )
                               }
                             />
                           </div>
@@ -495,8 +541,12 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               }
                             >
                               <option value="XP">Total XP</option>
-                              <option value="LESSONS_COMPLETED">Lessons completed</option>
-                              <option value="COURSES_COMPLETED">Courses completed</option>
+                              <option value="LESSONS_COMPLETED">
+                                Lessons completed
+                              </option>
+                              <option value="COURSES_COMPLETED">
+                                Courses completed
+                              </option>
                               <option value="STREAK">Streak days</option>
                               <option value="CUSTOM">Custom metric</option>
                             </select>
@@ -509,7 +559,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                           <Input
                             type="datetime-local"
                             value={goalDueDate}
-                            onChange={(event) => setGoalDueDate(event.target.value)}
+                            onChange={(event) =>
+                              setGoalDueDate(event.target.value)
+                            }
                           />
                         </div>
                         <Button
@@ -529,10 +581,11 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                   </Dialog>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="space-y-4 pt-0">
                 {groupData.goals.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground">
-                    No goals yet. Kick things off by setting your first shared milestone.
+                    No goals yet. Kick things off by setting your first shared
+                    milestone.
                   </div>
                 ) : (
                   groupData.goals.map((goal) => {
@@ -549,10 +602,15 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                           <div>
                             <p className="font-semibold">{goal.title}</p>
                             {goal.description && (
-                              <p className="text-sm text-muted-foreground">{goal.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {goal.description}
+                              </p>
                             )}
                           </div>
-                          <Badge variant="outline" className="text-xs uppercase">
+                          <Badge
+                            variant="outline"
+                            className="text-xs uppercase"
+                          >
                             {goal.type.toLowerCase().replace(/_/g, " ")}
                           </Badge>
                         </div>
@@ -560,11 +618,13 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                           <Progress value={progressPercent} className="h-2" />
                           <p className="text-xs text-muted-foreground">
                             {goal.progressValue.toLocaleString()} /{" "}
-                            {goal.targetValue.toLocaleString()} ({progressPercent}%)
+                            {goal.targetValue.toLocaleString()} (
+                            {progressPercent}%)
                           </p>
                           {goal.dueDate && (
                             <p className="text-xs text-muted-foreground">
-                              Due {format(new Date(goal.dueDate), "MMMM d, yyyy")}
+                              Due{" "}
+                              {format(new Date(goal.dueDate), "MMMM d, yyyy")}
                             </p>
                           )}
                         </div>
@@ -575,7 +635,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               size="sm"
                               variant="outline"
                               className="text-xs"
-                              onClick={() => handleGoalProgress(goal.id, amount)}
+                              onClick={() =>
+                                handleGoalProgress(goal.id, amount)
+                              }
                               disabled={isPending}
                             >
                               +{amount}
@@ -588,20 +650,29 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               Recent updates
                             </p>
                             {goal.updates.map((update) => (
-                              <div key={update.id} className="flex items-start gap-2 text-xs">
+                              <div
+                                key={update.id}
+                                className="flex items-start gap-2 text-xs"
+                              >
                                 <Check className="mt-0.5 h-3 w-3 text-primary" />
                                 <div>
                                   <p className="font-medium">
-                                    {update.user.name || update.user.email.split("@")[0]} added{" "}
-                                    {update.amount} progress
+                                    {update.user.name ||
+                                      update.user.email.split("@")[0]}{" "}
+                                    added {update.amount} progress
                                   </p>
                                   <p className="text-muted-foreground">
-                                    {formatDistanceToNow(new Date(update.createdAt), {
-                                      addSuffix: true,
-                                    })}
+                                    {formatDistanceToNow(
+                                      new Date(update.createdAt),
+                                      {
+                                        addSuffix: true,
+                                      }
+                                    )}
                                   </p>
                                   {update.note && (
-                                    <p className="mt-1 text-muted-foreground">{update.note}</p>
+                                    <p className="mt-1 text-muted-foreground">
+                                      {update.note}
+                                    </p>
                                   )}
                                 </div>
                               </div>
@@ -629,7 +700,10 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                   </p>
                 </div>
                 {canManage && (
-                  <Dialog open={isSessionDialogOpen} onOpenChange={setIsSessionDialogOpen}>
+                  <Dialog
+                    open={isSessionDialogOpen}
+                    onOpenChange={setIsSessionDialogOpen}
+                  >
                     <DialogTrigger asChild>
                       <Button size="sm" className="gap-2">
                         <Plus className="h-4 w-4" />
@@ -638,7 +712,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Schedule a collaboration session</DialogTitle>
+                        <DialogTitle>
+                          Schedule a collaboration session
+                        </DialogTitle>
                         <DialogDescription>
                           Book time to learn together or host a live retro.
                         </DialogDescription>
@@ -647,12 +723,16 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                         <Input
                           placeholder="Session title"
                           value={sessionTitle}
-                          onChange={(event) => setSessionTitle(event.target.value)}
+                          onChange={(event) =>
+                            setSessionTitle(event.target.value)
+                          }
                         />
                         <Textarea
                           placeholder="What will you cover?"
                           value={sessionDescription}
-                          onChange={(event) => setSessionDescription(event.target.value)}
+                          onChange={(event) =>
+                            setSessionDescription(event.target.value)
+                          }
                         />
                         <div className="space-y-2">
                           <label className="text-xs font-semibold uppercase text-muted-foreground">
@@ -661,7 +741,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                           <Input
                             type="datetime-local"
                             value={sessionScheduledAt}
-                            onChange={(event) => setSessionScheduledAt(event.target.value)}
+                            onChange={(event) =>
+                              setSessionScheduledAt(event.target.value)
+                            }
                           />
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
@@ -676,7 +758,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               value={sessionDuration ?? ""}
                               onChange={(event) =>
                                 setSessionDuration(
-                                  event.target.value ? Number(event.target.value) : undefined
+                                  event.target.value
+                                    ? Number(event.target.value)
+                                    : undefined
                                 )
                               }
                             />
@@ -688,7 +772,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                             <Input
                               placeholder="https://"
                               value={sessionMeetingLink}
-                              onChange={(event) => setSessionMeetingLink(event.target.value)}
+                              onChange={(event) =>
+                                setSessionMeetingLink(event.target.value)
+                              }
                             />
                           </div>
                         </div>
@@ -709,10 +795,11 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                   </Dialog>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="space-y-4 pt-0">
                 {upcomingSessions.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground">
-                    No sessions scheduled. Get something on the calendar to stay aligned.
+                    No sessions scheduled. Get something on the calendar to stay
+                    aligned.
                   </div>
                 ) : (
                   upcomingSessions.map((session) => {
@@ -742,8 +829,13 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {format(new Date(session.scheduledAt), "EEEE, MMM d • h:mm a")}
-                          {session.durationMinutes ? ` • ${session.durationMinutes} min` : ""}
+                          {format(
+                            new Date(session.scheduledAt),
+                            "EEEE, MMM d • h:mm a"
+                          )}
+                          {session.durationMinutes
+                            ? ` • ${session.durationMinutes} min`
+                            : ""}
                         </p>
                         <div className="flex flex-wrap items-center gap-2">
                           {session.attendees.map((attendee) => (
@@ -761,7 +853,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               <Avatar className="h-6 w-6 border border-border/60">
                                 <AvatarImage
                                   src={attendee.user.image || undefined}
-                                  alt={attendee.user.name || attendee.user.email}
+                                  alt={
+                                    attendee.user.name || attendee.user.email
+                                  }
                                 />
                                 <AvatarFallback className="text-xs">
                                   {(attendee.user.name || attendee.user.email)
@@ -781,7 +875,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               size="sm"
                               variant="outline"
                               disabled={isPending}
-                              onClick={() => handleSessionResponse(session.id, "ACCEPTED")}
+                              onClick={() =>
+                                handleSessionResponse(session.id, "ACCEPTED")
+                              }
                             >
                               Accept
                             </Button>
@@ -789,7 +885,9 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                               size="sm"
                               variant="outline"
                               disabled={isPending}
-                              onClick={() => handleSessionResponse(session.id, "DECLINED")}
+                              onClick={() =>
+                                handleSessionResponse(session.id, "DECLINED")
+                              }
                             >
                               Decline
                             </Button>
@@ -813,10 +911,15 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
                       key={session.id}
                       className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground"
                     >
-                      <p className="font-medium text-foreground">{session.title}</p>
+                      <p className="font-medium text-foreground">
+                        {session.title}
+                      </p>
                       <p>
-                        {format(new Date(session.scheduledAt), "MMMM d, yyyy")} •{" "}
-                        {session.durationMinutes ? `${session.durationMinutes} min` : "Duration?"}
+                        {format(new Date(session.scheduledAt), "MMMM d, yyyy")}{" "}
+                        •{" "}
+                        {session.durationMinutes
+                          ? `${session.durationMinutes} min`
+                          : "Duration?"}
                       </p>
                     </div>
                   ))}
