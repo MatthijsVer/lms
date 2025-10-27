@@ -266,9 +266,12 @@ export function TimelineBlockRenderer({
   const [showHints, setShowHints] = useState<{ [key: string]: boolean }>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const lessonProgress = useLessonProgress();
-  const { updateBlockProgress, isBlockCompleted } = lessonProgress;
+  const {
+    updateBlockProgress,
+    isBlockCompleted,
+    resetSignal = 0,
+  } = lessonProgress;
   const getBlockProgress = lessonProgress.getBlockProgress ?? (() => undefined);
-  const isCompleted = isBlockCompleted(blockId);
 
   const blockProgress = useMemo(
     () => getBlockProgress(blockId),
@@ -289,6 +292,7 @@ export function TimelineBlockRenderer({
     return undefined;
   }, [blockProgress]);
   const hydratedRef = useRef(false);
+  const persistedCompleted = blockProgress?.completed ?? false;
 
   useEffect(() => {
     if (hydratedRef.current) return;
@@ -327,6 +331,20 @@ export function TimelineBlockRenderer({
 
     return () => clearTimeout(timeout);
   }, [timelineItems, submitted, showHints, blockId, updateBlockProgress]);
+
+  useEffect(() => {
+    if (persistedCompleted && !submitted) {
+      setSubmitted(true);
+    }
+  }, [persistedCompleted, submitted]);
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    setTimelineItems([]);
+    setSubmitted(false);
+    setShowHints({});
+    setActiveId(null);
+  }, [resetSignal]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -483,6 +501,7 @@ export function TimelineBlockRenderer({
   const activeItem = activeId
     ? timelineItems.find((item) => item.id === activeId)
     : null;
+  const isCompleted = isBlockCompleted(blockId) || submitted || persistedCompleted;
 
   if (!content.events || content.events.length === 0) {
     return (

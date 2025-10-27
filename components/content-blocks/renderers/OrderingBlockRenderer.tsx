@@ -18,7 +18,7 @@ import {
   Timer,
   GripVertical,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
@@ -43,6 +43,12 @@ interface OrderingBlockRendererProps {
   blockId: string;
   lessonId: string;
 }
+
+type OrderingPersistedState = {
+  items?: OrderingContent["items"];
+  submitted?: boolean;
+  showHints?: Record<string, boolean>;
+};
 
 interface SortableItemProps {
   id: string;
@@ -176,8 +182,21 @@ export function OrderingBlockRenderer({
     showHints: {} as Record<string, boolean>,
   });
 
+  const { updateBlockProgress, isBlockCompleted, getBlockProgress } =
+    useLessonProgress();
+  const storedProgress = useMemo(
+    () => getBlockProgress(blockId),
+    [getBlockProgress, blockId]
+  );
+  const persistedCompleted = storedProgress?.completed ?? false;
+  const persistedState = (
+    storedProgress?.metadata as {
+      state?: OrderingPersistedState;
+    } | null
+  )?.state;
+
   const items = useMemo(() => blockState.items ?? [], [blockState.items]);
-  const submitted = blockState.submitted ?? false;
+  const submitted = blockState.submitted ?? persistedCompleted;
   const showHints = useMemo(
     () => blockState.showHints ?? {},
     [blockState.showHints]
@@ -186,8 +205,68 @@ export function OrderingBlockRenderer({
     content.timeLimit || null
   );
   const [timerActive, setTimerActive] = useState(false);
-  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
-  const isCompleted = isBlockCompleted(blockId);
+  const isCompleted = isBlockCompleted(blockId) || submitted;
+
+  const checkItemPosition = useCallback(
+    (item: OrderingContent["items"][0], currentIndex: number): boolean => {
+      return item.correctPosition === currentIndex;
+    },
+    []
+  );
+
+  const getScore = useCallback(() => {
+    let correct = 0;
+    items.forEach((item, index) => {
+      if (checkItemPosition(item, index)) {
+        correct++;
+      }
+    });
+
+    if (content.allowPartialCredit) {
+      return {
+        correct,
+        total: items.length,
+        percentage: (correct / items.length) * 100,
+      };
+    } else {
+      const allCorrect = correct === items.length;
+      return {
+        correct: allCorrect ? items.length : 0,
+        total: items.length,
+        percentage: allCorrect ? 100 : 0,
+      };
+    }
+  }, [checkItemPosition, content.allowPartialCredit, items]);
+
+  useEffect(() => {
+    if (!persistedState) return;
+    setBlockState((prev) => {
+      const nextItems =
+        prev.items && prev.items.length > 0
+          ? prev.items
+          : (persistedState.items ?? prev.items ?? initialItems);
+      const nextSubmitted =
+        prev.submitted ?? persistedState.submitted ?? persistedCompleted;
+      const nextShowHints =
+        prev.showHints && Object.keys(prev.showHints).length > 0
+          ? prev.showHints
+          : (persistedState.showHints ?? prev.showHints ?? {});
+
+      if (
+        prev.items === nextItems &&
+        (prev.submitted ?? false) === nextSubmitted &&
+        prev.showHints === nextShowHints
+      ) {
+        return prev;
+      }
+
+      return {
+        items: nextItems,
+        submitted: nextSubmitted,
+        showHints: nextShowHints,
+      };
+    });
+  }, [persistedState, setBlockState, initialItems, persistedCompleted]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -204,6 +283,40 @@ export function OrderingBlockRenderer({
       }));
     }
   }, [blockState.items, initialItems, setBlockState]);
+
+  const handleSubmit = useCallback(() => {
+    setBlockState((prev) => ({
+      ...prev,
+      submitted: true,
+    }));
+    setTimerActive(false);
+
+    const score = getScore();
+    const maxScore = content.points || 10;
+    const earnedScore =
+      content.allowPartialCredit !== false
+        ? Math.floor((score.percentage / 100) * maxScore)
+        : score.percentage === 100
+          ? maxScore
+          : 0;
+
+    updateBlockProgress(
+      blockId,
+      {
+        completed: score.percentage === 100,
+        score: earnedScore,
+        maxScore,
+      },
+      { incrementAttempt: true }
+    );
+  }, [
+    blockId,
+    content.allowPartialCredit,
+    content.points,
+    getScore,
+    updateBlockProgress,
+    setBlockState,
+  ]);
 
   // Timer effect
   useEffect(() => {
@@ -256,40 +369,6 @@ export function OrderingBlockRenderer({
     });
   };
 
-  const handleSubmit = useCallback(() => {
-    setBlockState((prev) => ({
-      ...prev,
-      submitted: true,
-    }));
-    setTimerActive(false);
-
-    const score = getScore();
-    const maxScore = content.points || 10;
-    const earnedScore =
-      content.allowPartialCredit !== false
-        ? Math.floor((score.percentage / 100) * maxScore)
-        : score.percentage === 100
-          ? maxScore
-          : 0;
-
-    updateBlockProgress(
-      blockId,
-      {
-        completed: score.percentage === 100,
-        score: earnedScore,
-        maxScore,
-      },
-      { incrementAttempt: true }
-    );
-  }, [
-    blockId,
-    content.allowPartialCredit,
-    content.points,
-    getScore,
-    updateBlockProgress,
-    setBlockState,
-  ]);
-
   const handleRetry = () => {
     const reshuffled = content.shuffleItems
       ? [...(content.items ?? [])].sort(() => Math.random() - 0.5)
@@ -313,37 +392,6 @@ export function OrderingBlockRenderer({
       },
     }));
   };
-
-  const checkItemPosition = useCallback(
-    (item: OrderingContent["items"][0], currentIndex: number): boolean => {
-      return item.correctPosition === currentIndex;
-    },
-    []
-  );
-
-  const getScore = useCallback(() => {
-    let correct = 0;
-    items.forEach((item, index) => {
-      if (checkItemPosition(item, index)) {
-        correct++;
-      }
-    });
-
-    if (content.allowPartialCredit) {
-      return {
-        correct,
-        total: items.length,
-        percentage: (correct / items.length) * 100,
-      };
-    } else {
-      const allCorrect = correct === items.length;
-      return {
-        correct: allCorrect ? items.length : 0,
-        total: items.length,
-        percentage: allCorrect ? 100 : 0,
-      };
-    }
-  }, [checkItemPosition, content.allowPartialCredit, items]);
 
   const canSubmit = items.length > 0;
   const score = submitted ? getScore() : null;

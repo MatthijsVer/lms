@@ -11,7 +11,7 @@ import {
   Trophy,
   Lightbulb,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   useLessonProgress,
@@ -23,6 +23,12 @@ interface QuizBlockRendererProps {
   blockId: string;
   lessonId: string;
 }
+
+type QuizPersistedState = {
+  selectedAnswers?: number[];
+  submitted?: boolean;
+  showExplanation?: boolean;
+};
 
 export function QuizBlockRenderer({
   content,
@@ -36,15 +42,65 @@ export function QuizBlockRenderer({
     showExplanation: false,
   });
 
-  const selectedAnswers = useMemo(
-    () => blockState.selectedAnswers ?? [],
-    [blockState.selectedAnswers]
+  const { updateBlockProgress, isBlockCompleted, getBlockProgress } =
+    useLessonProgress();
+  const storedProgress = useMemo(
+    () => getBlockProgress(blockId),
+    [getBlockProgress, blockId]
   );
-  const submitted = blockState.submitted ?? false;
-  const showExplanation = blockState.showExplanation ?? false;
+  const persistedCompleted = storedProgress?.completed ?? false;
+  const persistedState = (storedProgress?.metadata as {
+    state?: QuizPersistedState;
+  } | null)?.state;
 
-  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
-  const isCompleted = isBlockCompleted(blockId);
+  const persistedAnswers = useMemo(
+    () => persistedState?.selectedAnswers ?? [],
+    [persistedState]
+  );
+  const selectedAnswers = useMemo(
+    () => blockState.selectedAnswers ?? persistedAnswers,
+    [blockState.selectedAnswers, persistedAnswers]
+  );
+  const submitted =
+    blockState.submitted ?? persistedState?.submitted ?? persistedCompleted;
+  const showExplanation =
+    blockState.showExplanation ?? persistedState?.showExplanation ?? false;
+
+  const isCompleted = isBlockCompleted(blockId) || submitted;
+
+  const arraysEqual = useCallback((a: number[], b: number[]) => {
+    if (a.length !== b.length) return false;
+    return a.every((value, index) => value === b[index]);
+  }, []);
+
+  useEffect(() => {
+    if (!persistedState) return;
+    setBlockState((prev) => {
+      const nextSelected =
+        prev.selectedAnswers && prev.selectedAnswers.length > 0
+          ? prev.selectedAnswers
+          : persistedState.selectedAnswers ?? [];
+      const nextSubmitted =
+        prev.submitted ?? persistedState.submitted ?? persistedCompleted;
+      const nextShowExplanation =
+        prev.showExplanation ?? persistedState.showExplanation ?? false;
+
+      const prevSelected = prev.selectedAnswers ?? [];
+      if (
+        arraysEqual(prevSelected, nextSelected) &&
+        (prev.submitted ?? false) === nextSubmitted &&
+        (prev.showExplanation ?? false) === nextShowExplanation
+      ) {
+        return prev;
+      }
+
+      return {
+        selectedAnswers: nextSelected,
+        submitted: nextSubmitted,
+        showExplanation: nextShowExplanation,
+      };
+    });
+  }, [persistedState, setBlockState, persistedCompleted, arraysEqual]);
 
   const handleAnswerSelect = (optionIndex: number) => {
     if (submitted) return;

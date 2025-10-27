@@ -13,12 +13,18 @@ import {
   Lightbulb,
   HelpCircle,
 } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   useLessonProgress,
   useBlockPersistentState,
 } from "../LessonProgressContext";
+
+type FillInBlankPersistedState = {
+  answers?: Record<number, string>;
+  submitted?: boolean;
+  showHints?: Record<number, boolean>;
+};
 
 interface FillInBlankBlockRendererProps {
   content: FillInBlankContent;
@@ -38,15 +44,33 @@ export function FillInBlankBlockRenderer({
     showHints: {} as Record<number, boolean>,
   });
 
-  const answers = useMemo(() => blockState.answers ?? {}, [blockState.answers]);
-  const submitted = blockState.submitted ?? false;
+  const { updateBlockProgress, isBlockCompleted, getBlockProgress } =
+    useLessonProgress();
+  const storedProgress = useMemo(
+    () => getBlockProgress(blockId),
+    [getBlockProgress, blockId]
+  );
+  const persistedCompleted = storedProgress?.completed ?? false;
+  const persistedState = (storedProgress?.metadata as {
+    state?: FillInBlankPersistedState;
+  } | null)?.state;
+
+  const persistedAnswers = useMemo(
+    () => persistedState?.answers ?? {},
+    [persistedState]
+  );
+  const answers = useMemo(
+    () => blockState.answers ?? persistedAnswers,
+    [blockState.answers, persistedAnswers]
+  );
   const showHints = useMemo(
-    () => blockState.showHints ?? {},
-    [blockState.showHints]
+    () => blockState.showHints ?? persistedState?.showHints ?? {},
+    [blockState.showHints, persistedState]
   );
 
-  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
-  const isCompleted = isBlockCompleted(blockId);
+  const submitted =
+    blockState.submitted ?? persistedState?.submitted ?? persistedCompleted;
+  const isCompleted = isBlockCompleted(blockId) || submitted;
 
   const handleAnswerChange = (blankIndex: number, value: string) => {
     if (submitted) return;

@@ -62,7 +62,6 @@ export function MatchingBlockRenderer({
     () => blockState.connections ?? [],
     [blockState.connections]
   );
-  const submitted = blockState.submitted ?? false;
   const showHints = useMemo(
     () => blockState.showHints ?? {},
     [blockState.showHints]
@@ -79,8 +78,27 @@ export function MatchingBlockRenderer({
   );
   const [timerActive, setTimerActive] = useState(false);
 
-  const { updateBlockProgress, isBlockCompleted } = useLessonProgress();
-  const isCompleted = isBlockCompleted(blockId);
+  const { updateBlockProgress, isBlockCompleted, getBlockProgress } =
+    useLessonProgress();
+  const storedProgress = useMemo(
+    () => getBlockProgress(blockId),
+    [getBlockProgress, blockId]
+  );
+  const persistedCompleted = storedProgress?.completed ?? false;
+  const persistedState = (storedProgress?.metadata as Record<
+    string,
+    unknown
+  > | null)?.state as
+    | {
+        connections?: Connection[];
+        submitted?: boolean;
+        showHints?: Record<string, boolean>;
+        rightOrderMap?: number[];
+      }
+    | undefined;
+
+  const submitted = blockState.submitted ?? persistedCompleted;
+  const isCompleted = isBlockCompleted(blockId) || submitted;
 
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,6 +118,42 @@ export function MatchingBlockRenderer({
     pairs.length,
     setBlockState,
   ]);
+
+  useEffect(() => {
+    if (!persistedState) return;
+    setBlockState((prev) => {
+      const nextConnections =
+        prev.connections && prev.connections.length > 0
+          ? prev.connections
+          : persistedState.connections ?? prev.connections ?? [];
+      const nextSubmitted =
+        prev.submitted ?? persistedState.submitted ?? persistedCompleted;
+      const nextShowHints =
+        prev.showHints && Object.keys(prev.showHints).length > 0
+          ? prev.showHints
+          : persistedState.showHints ?? prev.showHints ?? {};
+      const nextRightOrder =
+        persistedState.rightOrderMap ??
+        prev.rightOrderMap ??
+        initialRightOrder;
+
+      if (
+        prev.connections === nextConnections &&
+        (prev.submitted ?? false) === nextSubmitted &&
+        prev.showHints === nextShowHints &&
+        prev.rightOrderMap === nextRightOrder
+      ) {
+        return prev;
+      }
+
+      return {
+        connections: nextConnections,
+        submitted: nextSubmitted,
+        showHints: nextShowHints,
+        rightOrderMap: nextRightOrder,
+      };
+    });
+  }, [persistedState, setBlockState, initialRightOrder, persistedCompleted]);
 
   const startTimer = () => {
     if (content.timeLimit && !timerActive) {

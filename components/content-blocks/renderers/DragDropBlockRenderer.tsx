@@ -370,9 +370,12 @@ export function DragDropBlockRenderer({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const lessonProgress = useLessonProgress();
-  const { updateBlockProgress, isBlockCompleted } = lessonProgress;
+  const {
+    updateBlockProgress,
+    isBlockCompleted,
+    resetSignal = 0,
+  } = lessonProgress;
   const getBlockProgress = lessonProgress.getBlockProgress ?? (() => undefined);
-  const isCompleted = isBlockCompleted(blockId);
 
   const blockProgress = useMemo(
     () => getBlockProgress(blockId),
@@ -393,6 +396,8 @@ export function DragDropBlockRenderer({
     return undefined;
   }, [blockProgress]);
   const hydratedRef = useRef(false);
+  const persistedCompleted = blockProgress?.completed ?? false;
+  const isCompleted = isBlockCompleted(blockId) || submitted || persistedCompleted;
 
   useEffect(() => {
     if (hydratedRef.current) return;
@@ -431,6 +436,26 @@ export function DragDropBlockRenderer({
 
     return () => clearTimeout(timeout);
   }, [placements, submitted, showHints, blockId, updateBlockProgress]);
+
+  useEffect(() => {
+    if (persistedCompleted && !submitted) {
+      setSubmitted(true);
+    }
+  }, [persistedCompleted, submitted]);
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    const initialPlacements: TokenPlacement[] = content.tokens.map((token) => ({
+      tokenId: token.id,
+      targetId: null,
+    }));
+    setPlacements(initialPlacements);
+    setSubmitted(false);
+    setShowHints({});
+    setTimeLeft(content.timeLimit || null);
+    setTimerActive(false);
+    setActiveId(null);
+  }, [resetSignal, content.tokens, content.timeLimit]);
 
   // Improved sensors with better touch and mouse handling
   const sensors = useSensors(

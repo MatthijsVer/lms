@@ -48,9 +48,12 @@ export function CodeExerciseBlockRenderer({
   const runnerContainerRef = useRef<HTMLDivElement | null>(null);
 
   const lessonProgress = useLessonProgress();
-  const { updateBlockProgress, isBlockCompleted } = lessonProgress;
+  const {
+    updateBlockProgress,
+    isBlockCompleted,
+    resetSignal = 0,
+  } = lessonProgress;
   const getBlockProgress = lessonProgress.getBlockProgress ?? (() => undefined);
-  const isCompleted = isBlockCompleted(blockId);
 
   const blockProgress = useMemo(
     () => getBlockProgress(blockId),
@@ -72,6 +75,8 @@ export function CodeExerciseBlockRenderer({
     return undefined;
   }, [blockProgress]);
   const hydratedRef = useRef(false);
+  const persistedCompleted = blockProgress?.completed ?? false;
+  const isCompleted = isBlockCompleted(blockId) || persistedCompleted;
 
   useEffect(() => {
     if (hydratedRef.current) return;
@@ -114,6 +119,15 @@ export function CodeExerciseBlockRenderer({
 
     return () => clearTimeout(timeout);
   }, [userCode, runnerOutput, testResults, showSolution, blockId, updateBlockProgress]);
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    setUserCode(content.starterCode || "");
+    setRunnerOutput([]);
+    setTestResults([]);
+    setShowSolution(false);
+    setRunToken(0);
+  }, [resetSignal, content.starterCode]);
 
   useEffect(() => {
     runTokenRef.current = runToken;
