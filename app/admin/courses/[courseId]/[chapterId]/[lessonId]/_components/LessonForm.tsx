@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/rich-text-editor/Editor";
 import { Uploader } from "@/components/file-uploader/Uploader";
-import { useTransition, useState, useEffect } from "react";
+import { useTransition, useState } from "react";
 import { tryCatch } from "@/hooks/try-catch";
 import { updateLesson } from "../actions";
 import { toast } from "sonner";
@@ -48,30 +48,28 @@ interface iAppProps {
 
 export function LessonForm({ chapterId, data, courseId }: iAppProps) {
   const [pending, startTransition] = useTransition();
-  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
-  const [useLegacyMode, setUseLegacyMode] = useState(true);
-
-  // Initialize content blocks from database
-  useEffect(() => {
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(() => {
     if (data.contentBlocks && data.contentBlocks.length > 0) {
-      // Load existing content blocks
-      const blocks = data.contentBlocks.map((block) => ({
+      return data.contentBlocks.map((block) => ({
         id: block.id,
         type: block.type as ContentBlockType,
         position: block.position,
-        content: block.content as any,
-      }));
-      setContentBlocks(blocks);
-    } else if (data.videoKey && contentBlocks.length === 0) {
-      // Migrate from legacy video field
-      const videoBlock: ContentBlock = {
-        type: ContentBlockType.VIDEO,
-        position: 0,
-        content: { videoKey: data.videoKey, title: "" } as VideoContent,
-      };
-      setContentBlocks([videoBlock]);
+        content: block.content as unknown as ContentBlock["content"],
+      })) as ContentBlock[];
     }
-  }, []);
+
+    if (data.videoKey) {
+      return [
+        {
+          type: ContentBlockType.VIDEO,
+          position: 0,
+          content: { videoKey: data.videoKey, title: "" } as VideoContent,
+        },
+      ];
+    }
+
+    return [];
+  });
 
   const form = useForm<LessonSchemaType>({
     resolver: zodResolver(lessonSchema),

@@ -20,16 +20,13 @@ import {
   User,
   Sparkles,
   FileJson,
-  Copy,
-  Check,
   Loader2,
   AlertCircle,
   MessageSquare,
   Wand2,
   Plus,
-  X,
 } from "lucide-react";
-import { ContentBlock, ContentBlockType } from "@/lib/content-blocks";
+import { ContentBlock } from "@/lib/content-blocks";
 import { toast } from "sonner";
 
 interface Message {

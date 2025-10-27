@@ -1,6 +1,7 @@
 "use client";
 
-import { IconCirclePlusFilled, type Icon } from "@tabler/icons-react";
+import { IconCirclePlusFilled } from "@tabler/icons-react";
+import type { ComponentType } from "react";
 
 import {
   SidebarGroup,
@@ -19,7 +20,7 @@ export function NavMain({
   items: {
     title: string;
     url: string;
-    icon?: Icon;
+    icon?: ComponentType<{ className?: string }>;
   }[];
 }) {
   const pathname = usePathname();

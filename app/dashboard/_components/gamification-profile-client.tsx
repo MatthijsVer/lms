@@ -16,7 +16,6 @@ import {
   Zap,
 } from "lucide-react";
 import { UserGamificationProfile } from "@/app/data/gamification/get-user-gamification-profile";
-import { GamificationService } from "@/app/data/gamification/gamification-service";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -222,12 +221,12 @@ export function GamificationProfileClient({
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {profile.earnedBadges.map((badge: any) => (
+                  {profile.earnedBadges.map((badge) => (
                     <div
                       key={badge.id}
                       className={cn(
-                        "relative p-4 rounded-lg border-2 transition-all cursor-pointer group"
-                        // getRarityColor(badge.rarity)
+                        "relative p-4 rounded-lg border-2 transition-all cursor-pointer group",
+                        getRarityColor(badge.rarity)
                       )}
                     >
                       <div className="space-y-2">
@@ -284,7 +283,7 @@ export function GamificationProfileClient({
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {lockedBadges.map((badge: any) => (
+                  {lockedBadges.map((badge) => (
                     <div
                       key={badge.id}
                       className="relative p-4 rounded-lg border-2 border-dashed bg-muted/30 opacity-60 hover:opacity-80 transition-opacity"

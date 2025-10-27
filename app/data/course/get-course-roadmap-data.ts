@@ -80,10 +80,6 @@ export async function getCourseRoadmapData(slug: string) {
   }
 
   // Get all quiz attempts for this user in this course
-  const allLessonIds = course.chapter.flatMap((chapter) =>
-    chapter.lessons.map((lesson) => lesson.id)
-  );
-
   const allContentBlockIds = course.chapter.flatMap((chapter) =>
     chapter.lessons.flatMap((lesson) =>
       lesson.contentBlocks.map((block) => block.id)
@@ -127,7 +123,12 @@ export async function getCourseRoadmapData(slug: string) {
       if (isCompleted) completedLessons++;
 
       // Calculate lesson points
-      const lessonTotalPoints = calculateLessonTotalPoints(lesson.contentBlocks);
+      const normalizedBlocks = lesson.contentBlocks.map((block) => ({
+        id: block.id,
+        type: block.type as ContentBlockType,
+        content: block.content as unknown,
+      }));
+      const lessonTotalPoints = calculateLessonTotalPoints(normalizedBlocks);
       totalPoints += lessonTotalPoints;
 
       // Calculate earned points for this lesson

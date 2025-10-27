@@ -14,7 +14,7 @@ export class LocalFileStorageServer {
     try {
       await access(filePath);
       await unlink(filePath);
-    } catch (error) {
+    } catch {
       // File doesn't exist, ignore error
     }
   }

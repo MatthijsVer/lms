@@ -6,10 +6,16 @@ import { PublicCourseCard } from "../(public)/_components/PublicCourseCard";
 import { CourseProgressCard } from "./_components/CourseProgressCard";
 
 export default async function DashboardPage() {
-  const [courses, enrolledCourses] = await Promise.all([
+  const [{ courses: allCourses }, enrolledCourses] = await Promise.all([
     getAllCourses(),
     getEnrolledCourses(),
   ]);
+  const availableCourses = allCourses.filter(
+    (course) =>
+      !enrolledCourses.some(
+        ({ Course: enrolled }) => enrolled.id === course.id
+      )
+  );
 
   return (
     <div className="p-6">
@@ -43,12 +49,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {/* {courses.filter(
-          (course) =>
-            !enrolledCourses.some(
-              ({ Course: enrolled }) => enrolled.id === course.id
-            )
-        ).length === 0 ? (
+        {availableCourses.length === 0 ? (
           <EmptyState
             title="No courses available"
             description="You have already purchased all available courses."
@@ -57,18 +58,11 @@ export default async function DashboardPage() {
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {courses
-              .filter(
-                (course) =>
-                  !enrolledCourses.some(
-                    ({ Course: enrolled }) => enrolled.id === course.id
-                  )
-              )
-              .map((course) => (
-                <PublicCourseCard key={course.id} data={course} />
-              ))}
+            {availableCourses.map((course) => (
+              <PublicCourseCard key={course.id} data={course} />
+            ))}
           </div>
-        )} */}
+        )}
       </section>
     </div>
   );

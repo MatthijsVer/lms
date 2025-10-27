@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Map, List } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { CourseRoadmap } from "@/app/dashboard/_components/CourseRoadmap";
 import { CourseRoadmapDataType } from "@/app/data/course/get-course-roadmap-data";
 

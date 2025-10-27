@@ -41,7 +41,6 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
           <VideoBlockRenderer
             key={block.id}
             content={block.content}
-            blockId={block.id}
           />
         );
       case ContentBlockType.TEXT:
@@ -49,7 +48,6 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
           <TextBlockRenderer
             key={block.id}
             content={block.content}
-            blockId={block.id}
           />
         );
       case ContentBlockType.IMAGE:
@@ -57,7 +55,6 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
           <ImageBlockRenderer
             key={block.id}
             content={block.content}
-            blockId={block.id}
           />
         );
       case ContentBlockType.QUIZ:
@@ -91,7 +88,6 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
           <FlashCardBlockRenderer
             key={block.id}
             content={block.content}
-            blockId={block.id}
           />
         );
       case ContentBlockType.MATCHING:
@@ -166,7 +162,7 @@ export function ContentBlockRenderer({ blocks, lessonId }: ContentBlockRendererP
         return (
           <div key={block.id} className="p-4 border rounded-lg bg-muted/50">
             <p className="text-muted-foreground text-sm">
-              Content type "{block.type}" is not yet supported for viewing.
+              Content type <span className="font-medium">&quot;{block.type}&quot;</span> is not yet supported for viewing.
             </p>
           </div>
         );

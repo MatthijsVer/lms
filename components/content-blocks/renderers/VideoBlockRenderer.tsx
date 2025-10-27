@@ -6,7 +6,6 @@ import { BookIcon } from "lucide-react";
 
 interface VideoBlockRendererProps {
   content: VideoContent;
-  blockId: string;
 }
 
 // Helper function to detect video type from URL
@@ -58,10 +57,7 @@ function getVimeoId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-export function VideoBlockRenderer({
-  content,
-  blockId,
-}: VideoBlockRendererProps) {
+export function VideoBlockRenderer({ content }: VideoBlockRendererProps) {
   const videoUrl = useConstructUrl(content.videoKey || "");
   const thumbnailUrl = useConstructUrl(content.thumbnailKey || "");
 

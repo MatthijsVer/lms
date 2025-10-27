@@ -9,6 +9,9 @@ import {
   IconHelp,
   IconSearch,
   IconSettings,
+  IconTrophy,
+  IconAward,
+  IconUsers,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
 import { NavMain } from "@/components/sidebar/nav-main";
@@ -26,7 +29,6 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import Image from "next/image";
-import { Award, Trophy, Users } from "lucide-react";
 
 const data = {
   navMain: [
@@ -38,17 +40,17 @@ const data = {
     {
       title: "My Progress",
       url: "/dashboard/profile",
-      icon: Trophy,
+      icon: IconTrophy,
     },
     {
       title: "Leaderboards",
       url: "/dashboard/leaderboards",
-      icon: Award,
+      icon: IconAward,
     },
     {
       title: "Friends",
       url: "/dashboard/friends",
-      icon: Users,
+      icon: IconUsers,
     },
   ],
   navClouds: [

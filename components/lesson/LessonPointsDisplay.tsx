@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Star, Target, CheckCircle, Circle } from "lucide-react";
 import {
-  calculateLessonTotalPoints,
   getLessonPointsSummary,
   calculatePointsProgress,
   getContentBlockTypeName,
@@ -113,20 +112,18 @@ export function LessonPointsDisplay({
               <Target className="h-3 w-3" />
               <span>
                 Exercises (
-                {
-                  summary.breakdown.filter((_, i) => {
-                    const userBlockScore = userProgress?.blockScores.find(
-                      (score) => score.blockId === summary.breakdown[i].id
-                    );
-                    const earned = userBlockScore?.earned || 0;
-                    return earned === summary.breakdown[i].points;
-                  }).length
-                }
+                {summary.breakdown.filter((item) => {
+                  const userBlockScore = userProgress?.blockScores.find(
+                    (score) => score.blockId === item.id
+                  );
+                  const earned = userBlockScore?.earned || 0;
+                  return earned === item.points;
+                }).length}
                 /{summary.breakdown.length} completed):
               </span>
             </div>
             <div className="grid grid-cols-1 gap-1.5">
-              {summary.breakdown.map((item, index) => {
+              {summary.breakdown.map((item) => {
                 const userBlockScore = userProgress?.blockScores.find(
                   (score) => score.blockId === item.id
                 );

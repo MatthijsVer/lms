@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import {
   Trophy,
@@ -14,7 +13,6 @@ import {
   Crown,
   Target,
   Zap,
-  Calendar,
   CheckCircle2,
   Lock,
   Sparkles,
@@ -42,9 +40,11 @@ export function FriendComparisonClient({
   } = comparison;
 
   const getCurrentUserName = () =>
-    currentUser?.user.name || currentUser?.user.email.split("@")[0] || "You";
+    currentUser?.user?.name ||
+    currentUser?.user?.email?.split("@")[0] ||
+    "You";
   const getFriendName = () =>
-    friend.user.name || friend.user.email.split("@")[0];
+    friend.user?.name || friend.user?.email?.split("@")[0] || "Friend";
 
   const allBadgeComparisons = badges.all || [];
   const totalBadgeCount = allBadgeComparisons.length;
@@ -151,7 +151,7 @@ export function FriendComparisonClient({
               <div className="relative">
                 <Avatar className="relative size-30 border border-primary shadow-2xl">
                   <AvatarImage
-                    src={currentUser?.user.image || undefined}
+                    src={currentUser?.user?.image || undefined}
                     alt={getCurrentUserName()}
                   />
                   <AvatarFallback className="text-5xl font-bold">
@@ -208,7 +208,7 @@ export function FriendComparisonClient({
                 <div className="absolute inset-0 bg-muted blur-3xl rounded-full" />
                 <Avatar className="relative size-30 border-muted-foreground shadow-2xl">
                   <AvatarImage
-                    src={friend.user.image || undefined}
+                    src={friend.user?.image || undefined}
                     alt={getFriendName()}
                   />
                   <AvatarFallback className="text-5xl font-bold">

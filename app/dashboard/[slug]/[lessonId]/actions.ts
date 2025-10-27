@@ -445,7 +445,7 @@ async function checkCourseCompletion(userId: string, courseId: string) {
 
     if (isCourseCompleted) {
       // Check if we've already awarded course completion
-      const existingCompletion = await prisma.xpTransaction.findFirst({
+      const existingCompletion = await prisma.xPTransaction.findFirst({
         where: {
           userId,
           referenceId: courseId,

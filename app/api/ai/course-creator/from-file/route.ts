@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let condensed = "";
     let workingText = "";
     if (mode === "document") {
       if (file.type.startsWith("text/") || file.name.endsWith(".txt")) {

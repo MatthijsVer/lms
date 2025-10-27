@@ -11,7 +11,6 @@ import {
   Calendar,
   Sparkles,
   Target,
-  Crown,
 } from "lucide-react";
 import { LeaderboardsData } from "@/app/data/gamification/get-leaderboards";
 import { cn } from "@/lib/utils";

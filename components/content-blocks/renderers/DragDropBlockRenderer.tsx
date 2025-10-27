@@ -182,7 +182,7 @@ const DroppableTarget = ({
   checkTokenPlacement,
   isActivelyDragging,
 }: DroppableTargetProps) => {
-  const { isOver, setNodeRef, active } = useDroppable({
+  const { isOver, setNodeRef } = useDroppable({
     id,
     data: {
       type: "target",
@@ -368,7 +368,7 @@ export function DragDropBlockRenderer({
   );
   const [timerActive, setTimerActive] = useState(false);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-  const timerRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lessonProgress = useLessonProgress();
   const {
     updateBlockProgress,

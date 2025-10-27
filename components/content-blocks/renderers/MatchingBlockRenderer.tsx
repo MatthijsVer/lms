@@ -467,7 +467,9 @@ export function MatchingBlockRenderer({
                 return (
                   <div
                     key={pair.id}
-                    ref={(el) => (leftRefs.current[index] = el)}
+                    ref={(el) => {
+                      leftRefs.current[index] = el;
+                    }}
                     onClick={() => handleLeftClick(index)}
                     className={cn(
                       "p-3 rounded-md border cursor-pointer transition-all relative",
@@ -529,7 +531,9 @@ export function MatchingBlockRenderer({
                 return (
                   <div
                     key={pair.id}
-                    ref={(el) => (rightRefs.current[displayIndex] = el)}
+                    ref={(el) => {
+                      rightRefs.current[displayIndex] = el;
+                    }}
                     onClick={() => handleRightClick(displayIndex)}
                     onMouseEnter={() => setHoveredRight(displayIndex)}
                     onMouseLeave={() => setHoveredRight(null)}
@@ -596,7 +600,12 @@ export function MatchingBlockRenderer({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setConnections([])}
+                onClick={() =>
+                  setBlockState((prev) => ({
+                    ...prev,
+                    connections: [],
+                  }))
+                }
               >
                 Clear all
               </Button>

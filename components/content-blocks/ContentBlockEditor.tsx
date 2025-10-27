@@ -13,7 +13,7 @@ import {
   Plus,
   Video,
   FileText,
-  Image,
+  Image as ImageIcon,
   HelpCircle,
   Code,
   FileDown,
@@ -57,7 +57,7 @@ interface ContentBlockEditorProps {
 const blockIcons = {
   [ContentBlockType.VIDEO]: Video,
   [ContentBlockType.TEXT]: FileText,
-  [ContentBlockType.IMAGE]: Image,
+  [ContentBlockType.IMAGE]: ImageIcon,
   [ContentBlockType.QUIZ]: HelpCircle,
   [ContentBlockType.EXERCISE]: ClipboardCheck,
   [ContentBlockType.CODE_EXERCISE]: SquareCode,
@@ -350,7 +350,7 @@ export function ContentBlockEditor({
             Text
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock(ContentBlockType.IMAGE)}>
-            <Image className="h-4 w-4 mr-2" />
+            <ImageIcon className="h-4 w-4 mr-2" />
             Image
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock(ContentBlockType.QUIZ)}>

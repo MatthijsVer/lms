@@ -18,7 +18,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 
 import {
@@ -45,7 +44,6 @@ import {
   respondToCollabSession,
 } from "@/app/data/collaboration/actions";
 import { searchUsers } from "@/app/data/friends/actions";
-import { cn } from "@/lib/utils";
 
 type UserSearchResult = Awaited<ReturnType<typeof searchUsers>>[number];
 
@@ -80,7 +78,6 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
 
   const { group: groupData, currentUserId, currentUserRole } = group;
   const canManage = currentUserRole === "OWNER" || currentUserRole === "ADMIN";
-  const isOwner = currentUserRole === "OWNER";
 
   const memberIds = useMemo(
     () => new Set(groupData.members.map((member) => member.userId)),
@@ -215,7 +212,7 @@ export function CollabGroupClient({ group }: CollabGroupClientProps) {
     try {
       const results = await searchUsers(query);
       setSearchResults(results.filter((result) => !memberIds.has(result.id)));
-    } catch (error) {
+    } catch {
       toast.error("Search failed. Try again.");
     } finally {
       setIsSearching(false);

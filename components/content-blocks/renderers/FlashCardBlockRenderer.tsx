@@ -18,10 +18,9 @@ import { cn } from "@/lib/utils";
 
 interface FlashCardBlockRendererProps {
   content: FlashCardContent;
-  blockId: string;
 }
 
-export function FlashCardBlockRenderer({ content, blockId }: FlashCardBlockRendererProps) {
+export function FlashCardBlockRenderer({ content }: FlashCardBlockRendererProps) {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showHint, setShowHint] = useState(false);

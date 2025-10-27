@@ -28,6 +28,10 @@ import {
   type BlockProgress,
 } from "@/components/content-blocks/LessonProgressContext";
 import { Badge } from "@/components/ui/badge";
+import {
+  ContentBlock,
+  ContentBlockType,
+} from "@/lib/content-blocks";
 
 interface iAppProps {
   data: LessonContentType;
@@ -42,10 +46,43 @@ function CourseContentInner({ data }: iAppProps) {
     getAllProgress,
     resetProgress,
   } = useLessonProgress();
+  const normalizedContentBlocks = useMemo<ContentBlock[]>(() => {
+    if (!data.contentBlocks) {
+      return [];
+    }
+
+    return data.contentBlocks.map((block) => ({
+      id: block.id,
+      position: block.position,
+      type: block.type as ContentBlockType,
+      content: block.content as unknown as ContentBlock["content"],
+    })) as unknown as ContentBlock[];
+  }, [data.contentBlocks]);
+  const lessonPointsContentBlocks = useMemo(
+    () =>
+      normalizedContentBlocks
+        .filter((block) => typeof block.id === "string")
+        .map((block) => ({
+          id: block.id as string,
+          type: block.type,
+          content: block.content,
+        })),
+    [normalizedContentBlocks]
+  );
+  const renderableContentBlocks = useMemo(
+    () =>
+      normalizedContentBlocks.map((block, index) => ({
+        id: (block.id as string) ?? `block-${index}`,
+        type: block.type,
+        position: block.position,
+        content: block.content,
+      })),
+    [normalizedContentBlocks]
+  );
 
   // Get all interactive block IDs (blocks that require completion)
   const interactiveBlockIds = useMemo(() => {
-    if (!data.contentBlocks) return [];
+    if (!normalizedContentBlocks.length) return [];
 
     const interactiveTypes = [
       "QUIZ",
@@ -57,10 +94,11 @@ function CourseContentInner({ data }: iAppProps) {
       "CODE_EXERCISE",
     ];
 
-    return data.contentBlocks
+    return normalizedContentBlocks
       .filter((block) => interactiveTypes.includes(block.type))
-      .map((block) => block.id);
-  }, [data.contentBlocks]);
+      .map((block) => block.id)
+      .filter((id): id is string => Boolean(id));
+  }, [normalizedContentBlocks]);
 
   const allBlocksCompleted = areAllBlocksCompleted(interactiveBlockIds);
   const isAlreadyCompleted = data.lessonProgress.length > 0;
@@ -207,18 +245,18 @@ function CourseContentInner({ data }: iAppProps) {
         </div>
 
         {/* Show lesson points summary if content blocks have points */}
-        {data.contentBlocks && data.contentBlocks.length > 0 && (
+        {lessonPointsContentBlocks.length > 0 && (
           <LessonPointsDisplay
-            contentBlocks={data.contentBlocks}
+            contentBlocks={lessonPointsContentBlocks}
             userProgress={data.userProgress}
             className="mb-4 py-0"
           />
         )}
 
         {/* Render content blocks if they exist */}
-        {data.contentBlocks && data.contentBlocks.length > 0 ? (
+        {renderableContentBlocks.length > 0 ? (
           <ContentBlockRenderer
-            blocks={data.contentBlocks}
+            blocks={renderableContentBlocks}
             lessonId={data.id}
           />
         ) : (

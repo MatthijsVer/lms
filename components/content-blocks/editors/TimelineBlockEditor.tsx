@@ -46,20 +46,15 @@ import {
   Plus,
   Trash2,
   Calendar,
-  Clock,
   Star,
   Target,
   Trophy,
   AlertCircle,
   GripVertical,
-  ChevronUp,
-  ChevronDown,
   Settings2,
   List,
   Copy,
   Eye,
-  EyeOff,
-  Palette,
   Layout,
   ChevronRight,
   Info,
@@ -70,7 +65,6 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -132,7 +126,6 @@ interface SortableEventCardProps {
   onUpdate: (updates: Partial<TimelineContent["events"][0]>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  totalEvents: number;
 }
 
 function SortableEventCard({
@@ -141,7 +134,6 @@ function SortableEventCard({
   onUpdate,
   onDelete,
   onDuplicate,
-  totalEvents,
 }: SortableEventCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -276,7 +268,7 @@ function SortableEventCard({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Event</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete "{event.title}"? This
+                    Are you sure you want to delete &quot;{event.title}&quot;? This
                         action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -682,12 +674,11 @@ export function TimelineBlockEditor({
                           key={event.id}
                           event={event}
                           index={originalIndex}
-                          onUpdate={(updates) =>
-                            updateEvent(originalIndex, updates)
-                          }
-                          onDelete={() => deleteEvent(originalIndex)}
-                          onDuplicate={() => duplicateEvent(originalIndex)}
-                          totalEvents={content.events?.length || 0}
+                        onUpdate={(updates) =>
+                          updateEvent(originalIndex, updates)
+                        }
+                        onDelete={() => deleteEvent(originalIndex)}
+                        onDuplicate={() => duplicateEvent(originalIndex)}
                         />
                       );
                     })}

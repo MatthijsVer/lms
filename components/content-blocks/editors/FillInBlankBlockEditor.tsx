@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Popover,
   PopoverContent,
@@ -121,7 +120,7 @@ export function FillInBlankBlockEditor({
   };
 
   const renderPreview = () => {
-    let text = block.content.text || "";
+    const text = block.content.text || "";
     let blankIndex = 0;
 
     const previewText = text.replace(/\{\{(blank|answer)\}\}/g, () => {
@@ -134,8 +133,6 @@ export function FillInBlankBlockEditor({
         <div className="prose prose-sm max-w-none">
           {previewText.split(/\[BLANK_(\d+)\]/).map((part, index) => {
             if (part.match(/^\d+$/)) {
-              const blankIdx = parseInt(part);
-              const currentBlank = block.content.blanks[blankIdx];
               return (
                 <span
                   key={index}

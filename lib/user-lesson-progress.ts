@@ -1,12 +1,5 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { ContentBlockType } from "@/lib/content-blocks";
-
-interface ContentBlockData {
-  id: string;
-  type: ContentBlockType;
-  content: any;
-}
 
 /**
  * Get user's earned points from quiz attempts and content block progress
@@ -90,4 +83,3 @@ export async function getUserLessonPoints(lessonId: string, userId: string) {
     blockScores: earnedPoints,
   };
 }
-

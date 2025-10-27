@@ -76,7 +76,7 @@ async function loadHighlighter() {
     highlighterPromise = (async () => {
       try {
         const shiki = await import("shiki/bundle/web");
-        await shiki.loadWasm();
+        await (shiki as any).loadWasm();
         return shiki.getSingletonHighlighter({
           themes: [SHIKI_THEMES.light, SHIKI_THEMES.dark],
         });
@@ -107,7 +107,7 @@ export function CodeBlockRenderer({
   const [runToken, setRunToken] = useState(0);
   const runTokenRef = useRef(runToken);
   const runnerContainerRef = useRef<HTMLDivElement | null>(null);
-  const copyTimeoutRef = useRef<NodeJS.Timeout>();
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { resolvedTheme } = useTheme();
   const theme =
     resolvedTheme === "dark" ? SHIKI_THEMES.dark : SHIKI_THEMES.light;
@@ -170,9 +170,11 @@ export function CodeBlockRenderer({
       try {
         if (
           resolvedLanguage !== "plaintext" &&
-          !highlighter.getLoadedLanguages().includes(resolvedLanguage)
+          !highlighter
+            .getLoadedLanguages()
+            .includes(resolvedLanguage as any)
         ) {
-          await highlighter.loadLanguage(resolvedLanguage);
+          await highlighter.loadLanguage(resolvedLanguage as any);
         }
       } catch (error) {
         if (process.env.NODE_ENV !== "production") {
@@ -185,7 +187,7 @@ export function CodeBlockRenderer({
 
       try {
         const html = highlighter.codeToHtml(codeString, {
-          lang: resolvedLanguage,
+          lang: resolvedLanguage as any,
           theme,
         });
         if (!cancelled) {

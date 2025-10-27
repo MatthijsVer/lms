@@ -8,7 +8,6 @@ import { S3 } from "@/lib/S3Client";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import { LocalFileStorage } from "@/lib/local-storage";
-import { LocalFileStorageServer } from "@/lib/local-storage-server";
 
 const fileUploadSchema = z.object({
   fileName: z.string().min(1, { message: "Filename is required" }),

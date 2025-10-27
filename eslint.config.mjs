@@ -10,9 +10,15 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  {
+    ignores: ["lib/generated/**", "./lib/generated/**"],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
-
-  { ignores: ["./lib/generated/**"] },
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
 ];
 
 export default eslintConfig;

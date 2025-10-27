@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { FileText, Download } from "lucide-react";
 import { PdfContent } from "@/lib/content-blocks";
 import { useConstructUrl } from "@/hooks/use-construct-url";
@@ -13,10 +12,7 @@ interface PdfBlockRendererProps {
 }
 
 export function PdfBlockRenderer({ content, blockId }: PdfBlockRendererProps) {
-  const pdfUrl = useMemo(
-    () => (content.pdfKey ? useConstructUrl(content.pdfKey) : ""),
-    [content.pdfKey]
-  );
+  const pdfUrl = useConstructUrl(content.pdfKey ?? "");
 
   if (!content.pdfKey) {
     return (

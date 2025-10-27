@@ -13,7 +13,7 @@ import {
   Lightbulb,
   HelpCircle,
 } from "lucide-react";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   useLessonProgress,

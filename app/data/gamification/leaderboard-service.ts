@@ -100,6 +100,7 @@ export class LeaderboardService {
             id: true,
             name: true,
             image: true,
+            email: true,
           },
         },
       },

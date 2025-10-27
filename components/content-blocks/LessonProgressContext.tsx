@@ -238,7 +238,7 @@ export function useBlockPersistentState<T extends Record<string, any>>(
     if (hasHydratedRef.current) return;
     const stored = (getBlockProgress(blockId)?.metadata?.state ?? {}) as T;
     if (stored && Object.keys(stored).length > 0) {
-      setState((prev) => ({
+      setState(() => ({
         ...baseStateRef.current,
         ...stored,
       }));

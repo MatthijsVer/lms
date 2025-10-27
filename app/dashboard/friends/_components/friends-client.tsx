@@ -39,6 +39,8 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 
+type UserSearchResult = Awaited<ReturnType<typeof searchUsers>>[number];
+
 interface FriendsClientProps {
   friendsData: FriendsData;
 }
@@ -46,7 +48,7 @@ interface FriendsClientProps {
 export function FriendsClient({ friendsData }: FriendsClientProps) {
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [addFriendEmail, setAddFriendEmail] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,7 +65,7 @@ export function FriendsClient({ friendsData }: FriendsClientProps) {
     try {
       const results = await searchUsers(query);
       setSearchResults(results);
-    } catch (error) {
+    } catch {
       toast.error("Failed to search users");
     } finally {
       setIsSearching(false);
@@ -185,7 +187,7 @@ export function FriendsClient({ friendsData }: FriendsClientProps) {
                     <DialogHeader>
                       <DialogTitle>Add a Friend</DialogTitle>
                       <DialogDescription>
-                        Enter your friend's email address to send them a friend
+                        Enter your friend&apos;s email address to send them a friend
                         request.
                       </DialogDescription>
                     </DialogHeader>

@@ -34,6 +34,24 @@ export default async function SlugPage({ params }: { params: Params }) {
   const imageUrl = LocalFileStorage.isLocalDevelopment()
     ? LocalFileStorage.getPublicUrl(course.fileKey)
     : `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES}.fly.storage.tigris.dev/${course.fileKey}`;
+  const badgeImages = [
+    "first-steps",
+    "knowledge-seeker",
+    "legend",
+    "master-learner",
+    "scholar",
+    "consistent",
+    "dedicated",
+    "unstoppable",
+    "iron-will",
+    "quiz-novice",
+    "quiz-expert",
+    "perfectionist",
+    "lesson-master",
+    "rising-star",
+    "elite-learner",
+    "grandmaster",
+  ];
 
   return (
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 mt-5">
@@ -72,78 +90,16 @@ export default async function SlugPage({ params }: { params: Params }) {
 
           <div className="space-y-6">
             <div className="border border-dashed items-center grid grid-cols-5 gap-6 justify-center p-8">
-              <img
-                alt="badge"
-                src="/badges/first-steps.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/knowledge-seeker.png"
-                className="h-[80px]"
-              />
-              <img alt="badge" src="/badges/legend.png" className="h-[80px]" />
-              <img
-                alt="badge"
-                src="/badges/master-learner.png"
-                className="h-[80px]"
-              />
-              <img alt="badge" src="/badges/scholar.png" className="h-[80px]" />
-              <img
-                alt="badge"
-                src="/badges/consistent.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/dedicated.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/unstoppable.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/iron-will.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/quiz-novice.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/quiz-expert.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/perfectionist.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/lesson-master.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/rising-star.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/elite-learner.png"
-                className="h-[80px]"
-              />
-              <img
-                alt="badge"
-                src="/badges/grandmaster.png"
-                className="h-[80px]"
-              />
+              {badgeImages.map((badge) => (
+                <Image
+                  key={badge}
+                  alt={`${badge.replace(/-/g, " ")} badge`}
+                  src={`/badges/${badge}.png`}
+                  width={80}
+                  height={80}
+                  className="h-[80px] w-auto"
+                />
+              ))}
             </div>
             <h2 className="text-3xl font-semibold tracking-tight">
               Course Description

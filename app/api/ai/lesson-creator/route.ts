@@ -39,12 +39,6 @@ const LessonSchema = z.object({
   contentBlocks: z.array(ContentBlockSchema)
 });
 
-const ChapterSchema = z.object({
-  title: z.string(),
-  position: z.number(),
-  lessons: z.array(LessonSchema)
-});
-
 // System prompt for the AI
 const SYSTEM_PROMPT = `You are an expert educational content creator. Your role is to have a conversation with the user to gather information about the lesson they want to create, and then generate a complete lesson structure in JSON format.
 

@@ -27,14 +27,17 @@ export interface BaseContentBlock {
 
 // Specific content types
 export interface VideoContent {
-  videoKey: string;
+  videoKey?: string;
+  videoUrl?: string;
+  thumbnailKey?: string;
   title?: string;
+  description?: string;
   duration?: number;
 }
 
 export interface TextContent {
   text: string;
-  format?: "markdown" | "html" | "plain";
+  format?: "markdown" | "html" | "plain" | "rich";
 }
 
 export interface ImageContent {
@@ -116,6 +119,7 @@ export interface FillInBlankContent {
   instructions?: string;
   points?: number;
   showHints?: boolean;
+  allowPartialCredit?: boolean;
 }
 
 export interface FlashCardContent {
@@ -146,6 +150,7 @@ export interface MatchingContent {
   allowHints?: boolean; // Allow hints to be shown
   points?: number; // Points awarded for completing all matches
   timeLimit?: number; // Optional time limit in seconds
+  allowPartialCredit?: boolean;
 }
 
 export interface OrderingContent {

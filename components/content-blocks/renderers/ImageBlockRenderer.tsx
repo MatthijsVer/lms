@@ -6,10 +6,9 @@ import Image from "next/image";
 
 interface ImageBlockRendererProps {
   content: ImageContent;
-  blockId: string;
 }
 
-export function ImageBlockRenderer({ content, blockId }: ImageBlockRendererProps) {
+export function ImageBlockRenderer({ content }: ImageBlockRendererProps) {
   const imageUrl = useConstructUrl(content.imageKey || "");
 
   if (!content.imageKey) {

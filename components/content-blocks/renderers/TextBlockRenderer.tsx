@@ -5,10 +5,9 @@ import { RenderDescription } from "@/components/rich-text-editor/RenderDescripti
 
 interface TextBlockRendererProps {
   content: TextContent;
-  blockId: string;
 }
 
-export function TextBlockRenderer({ content, blockId }: TextBlockRendererProps) {
+export function TextBlockRenderer({ content }: TextBlockRendererProps) {
   if (!content.text) {
     return null;
   }
@@ -23,7 +22,7 @@ export function TextBlockRenderer({ content, blockId }: TextBlockRendererProps) 
           <RenderDescription json={jsonContent} />
         </div>
       );
-    } catch (error) {
+    } catch {
       // Fallback to plain text if JSON parsing fails
       return (
         <div className="prose prose-gray dark:prose-invert max-w-none">
