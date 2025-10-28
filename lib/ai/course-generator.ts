@@ -6,8 +6,10 @@ import {
   AiChapterSchema,
 } from "./course-structure";
 
+const openAiKey = process.env.OPENAI_API_KEY ?? "";
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: openAiKey,
 });
 
 const JSON_REGEX = /```json\n([\s\S]*?)\n```/;

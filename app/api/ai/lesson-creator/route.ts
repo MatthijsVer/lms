@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY ?? "",
 });
 
 // Schema for the lesson structure based on your Prisma schema

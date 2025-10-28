@@ -26,6 +26,7 @@ const aj = arcjet.withRule(
 
 export async function POST(request: Request) {
   const session = await requireAdmin();
+  const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES ?? "";
   try {
     const decision = await aj.protect(request, {
       fingerprint: session?.user.id as string,
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     const uniqueKey = `${uuidv4()}-${fileName}`;
 
     const command = new PutObjectCommand({
-      Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
+      Bucket: bucketName,
       ContentType: contentType,
       ContentLength: size,
       Key: uniqueKey,

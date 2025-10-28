@@ -24,6 +24,7 @@ export async function enrollInCourseAction(
   const user = await requireUser();
 
   let checkoutUrl: string;
+  const betterAuthUrl = process.env.BETTER_AUTH_URL ?? "";
   try {
     const req = await request();
     const decision = await aj.protect(req, {
@@ -143,8 +144,8 @@ export async function enrollInCourseAction(
           },
         ],
         mode: "payment",
-        success_url: `${process.env.BETTER_AUTH_URL}/payment/success`,
-        cancel_url: `${process.env.BETTER_AUTH_URL}/payment/cancel`,
+        success_url: `${betterAuthUrl}/payment/success`,
+        cancel_url: `${betterAuthUrl}/payment/cancel`,
         metadata: {
           userId: user.id,
           courseId: course.id,

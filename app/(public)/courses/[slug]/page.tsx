@@ -31,9 +31,13 @@ export default async function SlugPage({ params }: { params: Params }) {
   const course = await getIndividualCourse(slug);
   const isEnrolled = await checkIfCourseBought(course.id);
 
+  const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES ?? "";
+
   const imageUrl = LocalFileStorage.isLocalDevelopment()
     ? LocalFileStorage.getPublicUrl(course.fileKey)
-    : `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES}.fly.storage.tigris.dev/${course.fileKey}`;
+    : bucketName
+      ? `https://${bucketName}.fly.storage.tigris.dev/${course.fileKey}`
+      : "";
   const badgeImages = [
     "first-steps",
     "knowledge-seeker",

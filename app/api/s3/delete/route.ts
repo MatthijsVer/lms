@@ -48,7 +48,7 @@ export async function DELETE(request: Request) {
 
     // Handle production S3 delete
     const command = new DeleteObjectCommand({
-      Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
+      Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES ?? "",
       Key: key,
     });
 
